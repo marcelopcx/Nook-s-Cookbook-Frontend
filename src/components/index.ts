@@ -6,3 +6,4 @@ export { default as AppButton } from "./ui/AppButton";
 export { ExternalLink } from "./ui/ExternalLink";
 export { Text, useThemeColor, View } from "./ui/Themed";
 export type { TextProps, ViewProps } from "./ui/Themed";
+export * from "./dashboard";
