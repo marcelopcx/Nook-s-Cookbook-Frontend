@@ -1,4 +1,5 @@
 import { AppButton, AuthLayout, TextField } from "@/components";
+import { authService } from "@/services";
 import { getFieldErrors, registerSchema } from "@/validations";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -15,6 +16,7 @@ export default function RegisterScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [errors, setErrors] = useState<{
     fullName?: string;
     email?: string;
@@ -27,7 +29,7 @@ export default function RegisterScreen() {
     router.push("../login");
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const result = registerSchema.safeParse({
       fullName,
       email,
@@ -50,8 +52,18 @@ export default function RegisterScreen() {
       return;
     }
     setErrors({});
+    setApiError(null);
     setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 800);
+    try {
+      await authService.register({ fullName, email, password });
+      router.replace("../login");
+    } catch (error) {
+      setApiError(
+        error instanceof Error ? error.message : "Error al registrar",
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -122,6 +134,10 @@ export default function RegisterScreen() {
           <Text className="-mt-4 mb-6 text-xs text-[#ff6b6b]">
             {errors.terms}
           </Text>
+        ) : null}
+
+        {apiError ? (
+          <Text className="-mt-2 mb-4 text-xs text-[#ff6b6b]">{apiError}</Text>
         ) : null}
 
         <AppButton

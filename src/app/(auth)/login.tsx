@@ -1,4 +1,5 @@
 import { AppButton, AuthLayout, TextField } from "@/components";
+import { authService } from "@/services";
 import { getFieldErrors, loginSchema } from "@/validations";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -15,6 +16,7 @@ export default function LoginScreen() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>(
     {},
   );
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const goToRegister = () => {
     router.push("../register");
@@ -24,15 +26,25 @@ export default function LoginScreen() {
     router.push("../forgot-password");
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const result = loginSchema.safeParse({ email, password });
     if (!result.success) {
       setErrors(getFieldErrors<"email" | "password">(result.error));
       return;
     }
     setErrors({});
+    setApiError(null);
     setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 800);
+    try {
+      await authService.login({ email, password });
+      router.replace("/inicio");
+    } catch (error) {
+      setApiError(
+        error instanceof Error ? error.message : "Error al iniciar sesión",
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -81,6 +93,10 @@ export default function LoginScreen() {
             </Text>
           </Pressable>
         </View>
+
+        {apiError ? (
+          <Text className="-mt-2 mb-4 text-xs text-[#ff6b6b]">{apiError}</Text>
+        ) : null}
 
         <AppButton
           title={isLoading ? "Iniciando..." : "Iniciar sesión"}
