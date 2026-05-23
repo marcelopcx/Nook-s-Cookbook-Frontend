@@ -1,0 +1,80 @@
+[
+  {
+    "id": "cherry-pie",
+    "title": "Tarta de Cerezas AC",
+    "category": "Postres",
+    "rating": 5,
+    "timeMinutes": 45,
+    "difficulty": "Media",
+    "imageUrl": "https://v0-animal-crossing-recipes-ui.vercel.app/cherry-pie.jpg",
+    "isFeatured": true,
+    "isSaved": true,
+    "isFavorite": true,
+    "iconName": "fruit-cherries"
+  },
+  {
+    "id": "pumpkin-soup",
+    "title": "Sopa de Calabaza",
+    "category": "Comidas",
+    "rating": 4.5,
+    "timeMinutes": 35,
+    "difficulty": "Media",
+    "imageUrl": "https://v0-animal-crossing-recipes-ui.vercel.app/pumpkin-soup.jpg",
+    "isFeatured": false,
+    "isSaved": false,
+    "isFavorite": false,
+    "iconName": "pumpkin"
+  },
+  {
+    "id": "peach-tea",
+    "title": "Te de Melocoton",
+    "category": "Bebidas",
+    "rating": 4.8,
+    "timeMinutes": 15,
+    "difficulty": "Facil",
+    "imageUrl": "https://v0-animal-crossing-recipes-ui.vercel.app/peach-tea.jpg",
+    "isFeatured": false,
+    "isSaved": true,
+    "isFavorite": true,
+    "iconName": "cup"
+  },
+  {
+    "id": "salmon",
+    "title": "Salmon a la Plancha",
+    "category": "Comidas",
+    "rating": 4.7,
+    "timeMinutes": 20,
+    "difficulty": "Facil",
+    "imageUrl": "https://v0-animal-crossing-recipes-ui.vercel.app/salmon.jpg",
+    "isFeatured": false,
+    "isSaved": false,
+    "isFavorite": false,
+    "iconName": "fish"
+  },
+  {
+    "id": "apple-cupcakes",
+    "title": "Cupcakes de Manzana",
+    "category": "Postres",
+    "rating": 4.9,
+    "timeMinutes": 40,
+    "difficulty": "Media",
+    "imageUrl": "https://v0-animal-crossing-recipes-ui.vercel.app/apple-cupcakes.jpg",
+    "isFeatured": false,
+    "isSaved": true,
+    "isFavorite": true,
+    "iconName": "cupcake"
+  },
+  {
+    "id": "pear-lemonade",
+    "title": "Limonada de Pera",
+    "category": "Bebidas",
+    "rating": 4.6,
+    "timeMinutes": 10,
+    "difficulty": "Facil",
+    "imageUrl": "https://v0-animal-crossing-recipes-ui.vercel.app/pear-lemonade.jpg",
+    "isFeatured": false,
+    "isSaved": false,
+    "isFavorite": false,
+    "iconName": "glass-cocktail"
+  }
+]

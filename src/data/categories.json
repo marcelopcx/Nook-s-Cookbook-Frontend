@@ -1,0 +1,14 @@
+{
+  "tabs": [
+    { "id": "inicio", "label": "Inicio", "iconName": "sprout" },
+    { "id": "postres", "label": "Postres", "iconName": "cupcake" },
+    { "id": "comidas", "label": "Comidas", "iconName": "food" },
+    { "id": "bebidas", "label": "Bebidas", "iconName": "cup" },
+    { "id": "favoritos", "label": "Favoritos", "iconName": "star" }
+  ],
+  "grid": [
+    { "id": "frutas", "label": "Frutas", "iconName": "fruit-cherries" },
+    { "id": "panaderia", "label": "Panaderia", "iconName": "bread-slice" },
+    { "id": "mariscos", "label": "Mariscos", "iconName": "fish" }
+  ]
+}

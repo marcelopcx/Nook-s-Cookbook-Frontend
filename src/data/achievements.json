@@ -1,0 +1,44 @@
+[
+  {
+    "id": "first-recipe",
+    "title": "Primera Receta",
+    "description": "Guarda tu primera receta",
+    "icon": "food",
+    "status": "complete"
+  },
+  {
+    "id": "creative-chef",
+    "title": "Chef Creativo",
+    "description": "Crea tu primera receta",
+    "icon": "chef-hat",
+    "status": "locked"
+  },
+  {
+    "id": "collector",
+    "title": "Coleccionista",
+    "description": "Guarda 5 recetas",
+    "icon": "book",
+    "status": "locked"
+  },
+  {
+    "id": "pastry-master",
+    "title": "Maestro Pastelero",
+    "description": "Guarda 3 postres",
+    "icon": "cupcake",
+    "status": "locked"
+  },
+  {
+    "id": "mixologist",
+    "title": "Mixologo",
+    "description": "Guarda 3 bebidas",
+    "icon": "glass-cocktail",
+    "status": "locked"
+  },
+  {
+    "id": "island-chef",
+    "title": "Chef de la Isla",
+    "description": "Crea 5 recetas propias",
+    "icon": "island",
+    "status": "locked"
+  }
+]

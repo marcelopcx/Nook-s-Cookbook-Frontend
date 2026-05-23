@@ -1,0 +1,115 @@
+[
+  {
+    "id": "cherry-pie",
+    "servings": 6,
+    "ingredients": [
+      "2 tazas de cerezas",
+      "1 taza de harina",
+      "1/2 taza de azucar",
+      "1/2 taza de mantequilla fria",
+      "1 cucharadita de canela",
+      "1 cucharadita de vainilla"
+    ],
+    "steps": [
+      "Precalienta el horno a 180 C.",
+      "Mezcla harina, azucar y mantequilla hasta obtener migas.",
+      "Coloca las cerezas en el molde y agrega la vainilla.",
+      "Cubre con la mezcla de migas y hornea 30-35 minutos.",
+      "Deja reposar 10 minutos antes de servir."
+    ],
+    "tips": ["Sirve con crema batida.", "Agrega un toque extra de canela."]
+  },
+  {
+    "id": "pumpkin-soup",
+    "servings": 4,
+    "ingredients": [
+      "2 tazas de calabaza en cubos",
+      "1/2 cebolla picada",
+      "2 tazas de caldo de verduras",
+      "1/2 taza de crema",
+      "Sal y pimienta al gusto"
+    ],
+    "steps": [
+      "Sofrie la cebolla hasta que este transparente.",
+      "Agrega la calabaza y cocina 5 minutos.",
+      "Incorpora el caldo y hierve 15-20 minutos.",
+      "Licua hasta obtener una crema suave.",
+      "Agrega la crema y ajusta la sazonalidad."
+    ],
+    "tips": ["Decora con semillas de calabaza tostadas."]
+  },
+  {
+    "id": "peach-tea",
+    "servings": 2,
+    "ingredients": [
+      "2 duraznos maduros",
+      "2 tazas de te negro frio",
+      "1 cucharada de miel",
+      "Hielo al gusto",
+      "Hojas de menta"
+    ],
+    "steps": [
+      "Corta los duraznos en rodajas.",
+      "Mezcla el te con miel hasta disolver.",
+      "Agrega hielo y las rodajas de durazno.",
+      "Decora con menta antes de servir."
+    ],
+    "tips": ["Puedes usar te verde si prefieres un sabor mas suave."]
+  },
+  {
+    "id": "salmon",
+    "servings": 2,
+    "ingredients": [
+      "2 filetes de salmon",
+      "1 limon",
+      "1 cucharada de aceite de oliva",
+      "Sal y pimienta",
+      "Hierbas frescas"
+    ],
+    "steps": [
+      "Sazona el salmon con sal, pimienta y aceite.",
+      "Sella en sarten caliente 3-4 minutos por lado.",
+      "Agrega jugo de limon al final.",
+      "Sirve con hierbas frescas."
+    ],
+    "tips": ["Acompana con verduras al vapor."]
+  },
+  {
+    "id": "apple-cupcakes",
+    "servings": 8,
+    "ingredients": [
+      "1 1/2 tazas de harina",
+      "1 taza de manzana rallada",
+      "2 huevos",
+      "1/2 taza de azucar",
+      "1/2 taza de leche",
+      "1 cucharadita de polvo de hornear"
+    ],
+    "steps": [
+      "Precalienta el horno a 180 C.",
+      "Mezcla harina, azucar y polvo de hornear.",
+      "Agrega huevos, leche y manzana rallada.",
+      "Vierte en moldes y hornea 18-20 minutos.",
+      "Deja enfriar antes de decorar."
+    ],
+    "tips": ["Agrega canela para un toque extra."]
+  },
+  {
+    "id": "pear-lemonade",
+    "servings": 3,
+    "ingredients": [
+      "2 peras maduras",
+      "2 limones",
+      "3 tazas de agua",
+      "2 cucharadas de azucar",
+      "Hielo al gusto"
+    ],
+    "steps": [
+      "Licua las peras con un poco de agua.",
+      "Cuela y mezcla con el jugo de limon.",
+      "Agrega azucar y agua restante.",
+      "Sirve con hielo."
+    ],
+    "tips": ["Decora con rodajas de pera."]
+  }
+]
