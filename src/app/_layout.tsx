@@ -1,4 +1,5 @@
 import { Stack } from "expo-router";
+import { RecipesProvider } from "@/providers/RecipesProvider";
 import { View } from "react-native";
 import "react-native-reanimated";
 
@@ -10,11 +11,13 @@ export {
 export default function RootLayout() {
   return (
     <View className="flex-1 bg-[#5c4a3d]">
-      <Stack
-        screenOptions={{
-          headerShown: false,
-        }}
-      />
+      <RecipesProvider>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+          }}
+        />
+      </RecipesProvider>
     </View>
   );
 }
