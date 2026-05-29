@@ -1,6 +1,6 @@
 {
   "tabs": [
-    { "id": "inicio", "label": "Inicio", "iconName": "sprout" },
+    { "id": "Todo", "label": "Todo", "iconName": "apps" },
     { "id": "postres", "label": "Postres", "iconName": "cupcake" },
     { "id": "comidas", "label": "Comidas", "iconName": "food" },
     { "id": "bebidas", "label": "Bebidas", "iconName": "cup" },

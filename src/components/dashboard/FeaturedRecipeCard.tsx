@@ -19,6 +19,7 @@ export default function FeaturedRecipeCard({
   difficulty,
   onPress,
 }: FeaturedRecipeCardProps) {
+  const mutedTextColor = "#8b7355";
   return (
     <Pressable
       onPress={onPress}
@@ -66,7 +67,11 @@ export default function FeaturedRecipeCard({
             </View>
           </View>
           <View className="mt-2 flex-row items-center gap-1">
-            <MaterialCommunityIcons name="clock" size={14} color="#8b7355" />
+            <MaterialCommunityIcons
+              name="clock"
+              size={14}
+              color={mutedTextColor}
+            />
             <Text className="text-xs font-semibold text-[#8b7355]">
               Pronto: {timeMinutes} min
             </Text>

@@ -12,11 +12,13 @@ export default function SearchBar({
   onChangeText,
   placeholder = "Buscar",
 }: SearchBarProps) {
+  const iconColor = "#8b7355";
+  const avatarColor = "#d4a574";
   return (
     <View className="relative px-4">
       <View className="relative flex-row items-center">
         <View className="absolute left-4">
-          <MaterialCommunityIcons name="magnify" size={26} color="#8b7355" />
+          <MaterialCommunityIcons name="magnify" size={26} color={iconColor} />
         </View>
         <TextInput
           value={value}
@@ -29,7 +31,7 @@ export default function SearchBar({
           <MaterialCommunityIcons
             name="account-circle"
             size={26}
-            color="#d4a574"
+            color={avatarColor}
           />
         </View>
       </View>

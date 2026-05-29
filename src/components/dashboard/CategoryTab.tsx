@@ -14,10 +14,11 @@ export default function CategoryTab({
   active = false,
   onPress,
 }: CategoryTabProps) {
+  const inactiveIconColor = "#8b7355";
   return (
     <Pressable
       onPress={onPress}
-      className={`w-[70px] items-center justify-center rounded-2xl border-2 p-2 ${
+      className={`h-[56px] w-full items-center justify-center rounded-2xl border-2 p-2 ${
         active
           ? "border-[#7cb69d] bg-[#7cb69d]/10 shadow-md"
           : "border-[#e8dfd4] bg-[#fff9f0]"
@@ -30,12 +31,14 @@ export default function CategoryTab({
               typeof MaterialCommunityIcons
             >["name"]
           }
-          size={18}
-          color={active ? "#7cb69d" : "#8b7355"}
+          size={16}
+          color={active ? "#7cb69d" : inactiveIconColor}
         />
       </View>
       <Text
-        className={`text-xs font-bold ${
+        numberOfLines={1}
+        ellipsizeMode="tail"
+        className={`text-center text-[9px] font-bold ${
           active ? "text-[#5c4a3d]" : "text-[#8b7355]"
         }`}
       >
