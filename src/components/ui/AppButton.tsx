@@ -44,6 +44,8 @@ export default function AppButton({
   className = "",
 }: AppButtonProps) {
   const isDisabled = disabled || loading;
+  const secondaryColor = "#5a4a42";
+  const iconColor = variant === "primary" ? "#ffffff" : secondaryColor;
 
   return (
     <Pressable
@@ -52,17 +54,9 @@ export default function AppButton({
       className={`w-full items-center justify-center rounded-md ${variantClasses[variant]} ${sizeClasses[size]} ${isDisabled ? "opacity-50" : ""} ${className}`}
     >
       <View className="flex-row items-center justify-center gap-2">
-        {loading ? (
-          <ActivityIndicator
-            color={variant === "primary" ? "#ffffff" : "#5a4a42"}
-          />
-        ) : null}
+        {loading ? <ActivityIndicator color={iconColor} /> : null}
         {!loading && iconName ? (
-          <MaterialCommunityIcons
-            name={iconName}
-            size={18}
-            color={variant === "primary" ? "#ffffff" : "#5a4a42"}
-          />
+          <MaterialCommunityIcons name={iconName} size={18} color={iconColor} />
         ) : null}
         <Text className={`text-base font-semibold ${textClasses[variant]}`}>
           {title}

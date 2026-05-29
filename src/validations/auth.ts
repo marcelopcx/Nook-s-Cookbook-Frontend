@@ -5,10 +5,12 @@ const emailSchema = z
   .trim()
   .min(1, "Ingresa tu correo")
   .email("Correo inválido")
+  .regex(/^\S+$/, "El correo no puede contener espacios")
   .max(30, "El correo no puede superar 30 caracteres");
 
 const passwordSchema = z
   .string()
+  .regex(/^\S+$/, "La contraseña no puede contener espacios")
   .min(6, "La contraseña debe tener al menos 6 caracteres")
   .max(20, "La contraseña no puede superar 20 caracteres");
 
@@ -23,11 +25,16 @@ export const registerSchema = z
       .string()
       .trim()
       .min(2, "Ingresa tu nombre")
-      .max(40, "El nombre no puede superar 40 caracteres"),
+      .max(40, "El nombre no puede superar 40 caracteres")
+      .regex(
+        /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+(?:[ '-][A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+)*$/,
+        "El nombre solo puede contener letras y espacios",
+      ),
     email: emailSchema,
     password: passwordSchema,
     confirmPassword: z
       .string()
+      .regex(/^\S+$/, "La contraseña no puede contener espacios")
       .min(1, "Confirma tu contraseña")
       .max(20, "La contraseña no puede superar 20 caracteres"),
   })
@@ -49,6 +56,7 @@ export const resetPasswordSchema = z
     newPassword: passwordSchema,
     confirmPassword: z
       .string()
+      .regex(/^\S+$/, "La contraseña no puede contener espacios")
       .min(1, "Confirma tu contraseña")
       .max(20, "La contraseña no puede superar 20 caracteres"),
   })
