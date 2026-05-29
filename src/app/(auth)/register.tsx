@@ -29,6 +29,23 @@ export default function RegisterScreen() {
     router.push("../login");
   };
 
+  const normalizeFullName = (value: string) => {
+    const cleaned = value.replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s'-]/g, "");
+    return cleaned.replace(/\s+/g, " ").replace(/^ /, "");
+  };
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value.replace(/\s+/g, "").toLowerCase());
+  };
+
+  const handlePasswordChange = (value: string) => {
+    setPassword(value.replace(/\s+/g, ""));
+  };
+
+  const handleConfirmPasswordChange = (value: string) => {
+    setConfirmPassword(value.replace(/\s+/g, ""));
+  };
+
   const handleSubmit = async () => {
     const result = registerSchema.safeParse({
       fullName,
@@ -73,7 +90,7 @@ export default function RegisterScreen() {
           label="Nombre completo"
           placeholder="Jhon Doe"
           value={fullName}
-          onChangeText={setFullName}
+          onChangeText={(value) => setFullName(normalizeFullName(value))}
           autoCapitalize="words"
           maxLength={40}
           errorText={errors.fullName}
@@ -83,7 +100,7 @@ export default function RegisterScreen() {
           label="Correo electrónico"
           placeholder="john.doe@email.com"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={handleEmailChange}
           keyboardType="email-address"
           maxLength={30}
           errorText={errors.email}
@@ -93,7 +110,7 @@ export default function RegisterScreen() {
           label="Contraseña"
           placeholder="********"
           value={password}
-          onChangeText={setPassword}
+          onChangeText={handlePasswordChange}
           rightIconName={showPassword ? "eye-off-outline" : "eye-outline"}
           onRightIconPress={() => setShowPassword((prev) => !prev)}
           secureTextEntry={!showPassword}
@@ -105,7 +122,7 @@ export default function RegisterScreen() {
           label="Confirmar contraseña"
           placeholder="********"
           value={confirmPassword}
-          onChangeText={setConfirmPassword}
+          onChangeText={handleConfirmPasswordChange}
           rightIconName={
             showConfirmPassword ? "eye-off-outline" : "eye-outline"
           }

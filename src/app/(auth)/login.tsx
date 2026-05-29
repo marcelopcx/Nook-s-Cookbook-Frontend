@@ -3,11 +3,17 @@ import { authService } from "@/services";
 import { getFieldErrors, loginSchema } from "@/validations";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { stopSoundtrack } from "@/services/soundtrack";
+import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 export default function LoginScreen() {
   const router = useRouter();
+
+  useEffect(() => {
+    stopSoundtrack();
+  }, []);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -24,6 +30,14 @@ export default function LoginScreen() {
 
   const goToForgotPassword = () => {
     router.push("../forgot-password");
+  };
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value.replace(/\s+/g, "").toLowerCase());
+  };
+
+  const handlePasswordChange = (value: string) => {
+    setPassword(value.replace(/\s+/g, ""));
   };
 
   const handleSubmit = async () => {
@@ -54,7 +68,7 @@ export default function LoginScreen() {
           label="Correo electrónico"
           placeholder="john.doe@email.com"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={handleEmailChange}
           keyboardType="email-address"
           maxLength={30}
           errorText={errors.email}
@@ -64,7 +78,7 @@ export default function LoginScreen() {
           label="Contraseña"
           placeholder="********"
           value={password}
-          onChangeText={setPassword}
+          onChangeText={handlePasswordChange}
           rightIconName={showPassword ? "eye-off-outline" : "eye-outline"}
           onRightIconPress={() => setShowPassword((prev) => !prev)}
           secureTextEntry={!showPassword}
