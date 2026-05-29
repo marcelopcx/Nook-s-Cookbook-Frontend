@@ -8,7 +8,7 @@ import {
   SectionTitle,
 } from "@/components/dashboard";
 import categoriesData from "@/data/categories.json";
-import recipesData from "@/data/recipes.json";
+import { useRecipes } from "@/providers/RecipesProvider";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { ScrollView, View } from "react-native";
@@ -28,25 +28,48 @@ type Recipe = {
 
 export default function InicioScreen() {
   const router = useRouter();
+  const { recipes } = useRecipes();
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("inicio");
+  const [selectedTabId, setSelectedTabId] = useState(
+    categoriesData.tabs.find((t) => t.id === "favoritos")?.id ??
+      categoriesData.tabs[0]?.id ??
+      "Todo",
+  );
 
   const handleOpenRecipe = (id: string) => {
     router.push({ pathname: "/receta/[id]", params: { id } });
   };
 
+  const filteredRecipes = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    return (recipes as Recipe[]).filter((recipe) => {
+      const matchesTab = (() => {
+        if (selectedTabId === "Todo") return true;
+        if (selectedTabId === "favoritos") return recipe.isFavorite;
+
+        return recipe.category.toLowerCase() === selectedTabId.toLowerCase();
+      })();
+
+      if (!matchesTab) return false;
+      if (query.length === 0) return true;
+
+      return recipe.title.toLowerCase().includes(query);
+    });
+  }, [recipes, selectedTabId, search]);
+
   const featuredRecipe = useMemo(
-    () => recipesData.find((recipe) => recipe.isFeatured),
-    [],
-  ) as Recipe | undefined;
+    () => filteredRecipes.find((recipe) => recipe.isFeatured),
+    [filteredRecipes],
+  );
 
   const moreRecipes = useMemo(
-    () => recipesData.filter((recipe) => !recipe.isFeatured),
-    [],
-  ) as Recipe[];
+    () => filteredRecipes.filter((recipe) => !recipe.isFeatured),
+    [filteredRecipes],
+  );
 
   return (
-    <View className="flex-1 bg-[#fdf8f3] ">
+    <View className="flex-1 bg-[#fdf8f3]">
       <ScrollView
         contentContainerStyle={{ paddingBottom: 10 }}
         showsVerticalScrollIndicator={false}
@@ -56,22 +79,19 @@ export default function InicioScreen() {
           <SearchBar value={search} onChangeText={setSearch} />
         </View>
 
-        <View className="mb-5 px-[14px]">
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8, paddingBottom: 8 }}
-          >
+        <View className="mb-6 px-4">
+          <View className="w-full flex-row">
             {categoriesData.tabs.map((tab) => (
-              <CategoryTab
-                key={tab.id}
-                label={tab.label}
-                iconName={tab.iconName}
-                active={activeTab === tab.id}
-                onPress={() => setActiveTab(tab.id)}
-              />
+              <View key={tab.id} className="flex-1 px-1">
+                <CategoryTab
+                  label={tab.label}
+                  iconName={tab.iconName}
+                  active={tab.id === selectedTabId}
+                  onPress={() => setSelectedTabId(tab.id)}
+                />
+              </View>
             ))}
-          </ScrollView>
+          </View>
         </View>
 
         {featuredRecipe ? (

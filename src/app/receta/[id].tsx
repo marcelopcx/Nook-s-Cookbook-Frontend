@@ -1,9 +1,9 @@
 import RatingStars from "@/components/dashboard/RatingStars";
-import recipeDetailsData from "@/data/recipe-details.json";
-import recipesData from "@/data/recipes.json";
+import { useRecipes } from "@/providers/RecipesProvider";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Image, Pressable, ScrollView, Text, View } from "react-native";
+import { useMemo, useState } from "react";
+import { Image, Modal, Pressable, ScrollView, Text, View } from "react-native";
 
 type Recipe = {
   id: string;
@@ -25,13 +25,23 @@ type RecipeDetails = {
 
 export default function RecipeDetailScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const recipe = recipesData.find((item) => item.id === id) as
-    | Recipe
-    | undefined;
-  const details = recipeDetailsData.find((item) => item.id === id) as
-    | RecipeDetails
-    | undefined;
+  const { id, source } = useLocalSearchParams<{
+    id: string;
+    source?: string;
+  }>();
+  const { getRecipeById, getDetailsById, deleteRecipe } = useRecipes();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const recipe = useMemo(
+    () => (id ? (getRecipeById(id) as Recipe | undefined) : undefined),
+    [getRecipeById, id],
+  );
+  const details = useMemo(
+    () => (id ? (getDetailsById(id) as RecipeDetails | undefined) : undefined),
+    [getDetailsById, id],
+  );
+
+  const canManage = source === "mis-recetas";
 
   if (!recipe || !details) {
     return (
@@ -70,7 +80,7 @@ export default function RecipeDetailScreen() {
           <View className="absolute left-4 top-12 right-4 flex-row items-center justify-between">
             <Pressable
               onPress={() => router.back()}
-              className="h-10 w-10 items-center justify-center rounded-full bg-white/90"
+              className="h-10 w-10 items-center justify-center rounded-full"
             >
               <MaterialCommunityIcons
                 name="chevron-left"
@@ -78,10 +88,40 @@ export default function RecipeDetailScreen() {
                 color="#5c4a3d"
               />
             </Pressable>
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-white/90">
+            <View className="h-10 w-10 items-center justify-center rounded-full">
               <MaterialCommunityIcons name="heart" size={18} color="#f4b8c5" />
             </View>
           </View>
+
+          {canManage ? (
+            <View className="absolute bottom-4 right-4 flex-row items-center gap-2">
+              <Pressable
+                onPress={() => setShowDeleteModal(true)}
+                className="h-10 w-10 mb-2 items-center justify-center rounded-full"
+              >
+                <MaterialCommunityIcons
+                  name="trash-can"
+                  size={18}
+                  color="#7cb69d"
+                />
+              </Pressable>
+              <Pressable
+                onPress={() =>
+                  router.push({
+                    pathname: "/cesta",
+                    params: { editId: id, editKey: Date.now().toString() },
+                  })
+                }
+                className="h-10 w-10 mb-2 items-center justify-center rounded-full"
+              >
+                <MaterialCommunityIcons
+                  name="pencil"
+                  size={18}
+                  color="#5c4a3d"
+                />
+              </Pressable>
+            </View>
+          ) : null}
         </View>
 
         <View className="-mt-6 rounded-t-3xl border-t-2 border-[#e8dfd4] bg-[#fdf8f3] px-5 pt-6">
@@ -195,16 +235,59 @@ export default function RecipeDetailScreen() {
               ))}
             </View>
           </View>
-
-          <View className="mt-6">
-            <Pressable className="items-center rounded-2xl bg-[#7cb69d] py-4">
-              <Text className="text-sm font-bold text-white">
-                Guardar en Mis Recetas
-              </Text>
-            </Pressable>
-          </View>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={showDeleteModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeleteModal(false)}
+      >
+        <View className="flex-1 justify-center bg-black/40 px-5">
+          <Pressable
+            className="absolute inset-0"
+            onPress={() => setShowDeleteModal(false)}
+          />
+          <View className="rounded-3xl border-2 border-[#e8dfd4] bg-[#fff9f0] p-5">
+            <View className="mb-3 flex-row items-center gap-2">
+              <View className="flex-1">
+                <Text className="text-base font-bold text-[#5c4a3d]">
+                  Eliminar receta
+                </Text>
+                <Text className="text-xs text-[#8b7355]">
+                  Esta acción no se puede deshacer.
+                </Text>
+              </View>
+            </View>
+
+            <Text className="text-sm text-[#5c4a3d]">
+              ¿Seguro que deseas eliminar: “{recipe.title}”?
+            </Text>
+
+            <View className="flex-row gap-3 mt-6">
+              <Pressable
+                onPress={() => setShowDeleteModal(false)}
+                className="flex-1 items-center rounded-2xl border-2 border-[#e8dfd4] bg-white py-2"
+              >
+                <Text className="text-sm font-bold text-[#8b7355]">
+                  Cancelar
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  setShowDeleteModal(false);
+                  deleteRecipe(id);
+                  router.back();
+                }}
+                className="flex-1 items-center rounded-2xl bg-[#c15757] py-2"
+              >
+                <Text className="text-sm font-bold text-white">Eliminar</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

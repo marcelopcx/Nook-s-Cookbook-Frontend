@@ -1,20 +1,29 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
+import { useEffect } from "react";
 import { View } from "react-native";
 
-const tabBarStyle = {
-  backgroundColor: "#FFFAEF",
-  borderTopColor: "#e8dfd4",
-  borderTopWidth: 2,
-  height: 80,
-  paddingBottom: 25,
-  paddingTop: 25,
-  marginBottom: 25,
-  marginHorizontal: 10,
-  borderRadius: 20,
-};
+import { startSoundtrack, stopSoundtrack } from "@/services/soundtrack";
 
 export default function TabsLayout() {
+  useEffect(() => {
+    startSoundtrack();
+    return () => {
+      stopSoundtrack();
+    };
+  }, []);
+
+  const tabBarStyle = {
+    backgroundColor: "#FFFAEF",
+    borderTopColor: "#e8dfd4",
+    borderTopWidth: 2,
+    height: 80,
+    paddingBottom: 25,
+    paddingTop: 25,
+    marginBottom: 25,
+    marginHorizontal: 10,
+    borderRadius: 20,
+  };
   return (
     <View className="flex-1 bg-[#FFFAEF]">
       <Tabs

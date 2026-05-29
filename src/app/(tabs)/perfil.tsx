@@ -9,6 +9,7 @@ import profileData from "@/data/profile.json";
 import statsData from "@/data/stats.json";
 import recipesData from "@/data/recipes.json";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import {
   ScrollView,
   Text,
@@ -19,14 +20,22 @@ import {
 import { useState } from "react";
 
 export default function PerfilScreen() {
+  const router = useRouter();
   const [section, setSection] = useState<"achievements" | "saved" | "created">(
     "achievements",
   );
+  const avatarIconName = profileData.avatarIconName as React.ComponentProps<
+    typeof MaterialCommunityIcons
+  >["name"];
   const { width } = useWindowDimensions();
   const containerPadding = 16; // px-4
   const gap = 16;
   const available = Math.max(0, width - containerPadding * 2);
   const itemWidth = Math.floor((available - gap) / 2);
+
+  const handleOpenRecipe = (id: string) => {
+    router.push({ pathname: "/receta/[id]", params: { id } });
+  };
   return (
     <View className="flex-1 bg-[#fdf8f3]">
       <ScrollView
@@ -40,17 +49,10 @@ export default function PerfilScreen() {
             <View className="flex-row items-center gap-4">
               <View className="relative h-20 w-20 items-center justify-center rounded-full bg-[#d4a574]">
                 <MaterialCommunityIcons
-                  name={profileData.avatarIconName}
+                  name={avatarIconName}
                   size={28}
                   color="#fff"
                 />
-                <View className="absolute -bottom-1 -right-1 rounded-full border-2 border-white bg-[#7cb69d] p-1.5">
-                  <MaterialCommunityIcons
-                    name="pencil"
-                    size={12}
-                    color="#fff"
-                  />
-                </View>
               </View>
               <View className="flex-1">
                 <Text className="text-xl font-bold text-[#5c4a3d]">
@@ -205,7 +207,11 @@ export default function PerfilScreen() {
                     <AchievementCard
                       title={achievement.title}
                       description={achievement.description}
-                      iconName={achievement.icon}
+                      iconName={
+                        achievement.icon as React.ComponentProps<
+                          typeof MaterialCommunityIcons
+                        >["name"]
+                      }
                       completed={achievement.status === "complete"}
                     />
                   </View>
@@ -229,6 +235,7 @@ export default function PerfilScreen() {
                         imageUrl={r.imageUrl}
                         rating={r.rating}
                         timeMinutes={r.timeMinutes}
+                        onPress={() => handleOpenRecipe(r.id)}
                       />
                     </View>
                   ))}
@@ -256,6 +263,7 @@ export default function PerfilScreen() {
                           imageUrl={r.imageUrl}
                           rating={r.rating}
                           timeMinutes={r.timeMinutes}
+                          onPress={() => handleOpenRecipe(r.id)}
                         />
                       </View>
                     ))
