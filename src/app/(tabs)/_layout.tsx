@@ -1,15 +1,111 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
-import { useEffect } from "react";
-import { View } from "react-native";
+import { Tabs, usePathname } from "expo-router";
+import { useEffect, useRef, useState } from "react";
+import { useWindowDimensions, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 
 import { startSoundtrack, stopSoundtrack } from "@/services/soundtrack";
+import { useAudioSettings } from "@/providers/AudioSettingsProvider";
 
 export default function TabsLayout() {
+  const { musicEnabled } = useAudioSettings();
+  const pathname = usePathname();
+  const prevTabPath = useRef<string | null>(null);
+  const { width } = useWindowDimensions();
+  const [turnDirection, setTurnDirection] = useState<1 | -1>(1);
+
+  const overlayTranslateX = useSharedValue(width || 0);
+  const overlayOpacity = useSharedValue(0);
+
+  const tabOrder = useRef([
+    "/inicio",
+    "/mis-recetas",
+    "/cesta",
+    "/perfil",
+    "/ajustes",
+  ]).current;
+
+  const isDashboardTabPath = (path: string) => tabOrder.includes(path);
+
+  const getTabIndex = (path: string) => tabOrder.indexOf(path);
+
+  const playPageTurnAnimation = (direction: 1 | -1) => {
+    if (!width) return;
+
+    overlayOpacity.value = 1;
+    if (direction === 1) {
+      overlayTranslateX.value = width;
+      overlayTranslateX.value = withTiming(
+        -width,
+        { duration: 420 },
+        (finished) => {
+          if (finished) {
+            overlayTranslateX.value = width;
+            overlayOpacity.value = 0;
+          }
+        },
+      );
+      return;
+    }
+
+    overlayTranslateX.value = -width;
+    overlayTranslateX.value = withTiming(
+      width,
+      { duration: 420 },
+      (finished) => {
+        if (finished) {
+          overlayTranslateX.value = -width;
+          overlayOpacity.value = 0;
+        }
+      },
+    );
+  };
+
+  const overlayStyle = useAnimatedStyle(() => {
+    return {
+      opacity: overlayOpacity.value,
+      transform: [{ translateX: overlayTranslateX.value }],
+    };
+  });
+
   useEffect(() => {
-    startSoundtrack();
+    if (musicEnabled) {
+      void startSoundtrack();
+    } else {
+      void stopSoundtrack();
+    }
+  }, [musicEnabled]);
+
+  useEffect(() => {
+    if (!width) return;
+    if (!isDashboardTabPath(pathname)) return;
+
+    const prev = prevTabPath.current;
+    if (!prev) {
+      prevTabPath.current = pathname;
+      overlayTranslateX.value = width;
+      overlayOpacity.value = 0;
+      return;
+    }
+
+    if (prev !== pathname && isDashboardTabPath(prev)) {
+      const prevIndex = getTabIndex(prev);
+      const nextIndex = getTabIndex(pathname);
+      const direction: 1 | -1 = nextIndex >= prevIndex ? 1 : -1;
+      setTurnDirection(direction);
+      playPageTurnAnimation(direction);
+    }
+
+    prevTabPath.current = pathname;
+  }, [pathname, width]);
+
+  useEffect(() => {
     return () => {
-      stopSoundtrack();
+      void stopSoundtrack();
     };
   }, []);
 
@@ -176,6 +272,25 @@ export default function TabsLayout() {
           }}
         />
       </Tabs>
+
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          {
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "#FFFAEF",
+            borderLeftWidth: turnDirection === 1 ? 2 : 0,
+            borderLeftColor: turnDirection === 1 ? "#e8dfd4" : "transparent",
+            borderRightWidth: turnDirection === -1 ? 2 : 0,
+            borderRightColor: turnDirection === -1 ? "#e8dfd4" : "transparent",
+          },
+          overlayStyle,
+        ]}
+      />
     </View>
   );
 }

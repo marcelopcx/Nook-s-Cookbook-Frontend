@@ -31,7 +31,7 @@ export default function InicioScreen() {
   const { recipes } = useRecipes();
   const [search, setSearch] = useState("");
   const [selectedTabId, setSelectedTabId] = useState(
-    categoriesData.tabs.find((t) => t.id === "favoritos")?.id ??
+    categoriesData.tabs.find((t) => t.id === "Todo")?.id ??
       categoriesData.tabs[0]?.id ??
       "Todo",
   );

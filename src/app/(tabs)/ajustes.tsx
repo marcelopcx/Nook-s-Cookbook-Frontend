@@ -1,11 +1,13 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { AppHeader, SectionTitle } from "@/components/dashboard";
 import AppButton from "@/components/ui/AppButton";
+import { useAudioSettings } from "@/providers/AudioSettingsProvider";
 import { useMemo, useState } from "react";
 import {
   Modal,
   Pressable,
   ScrollView,
+  Switch,
   Text,
   TextInput,
   View,
@@ -16,11 +18,13 @@ type SettingAction = {
   title: string;
   subtitle: string;
   iconName: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
-  tone?: "danger";
   onPress?: () => void;
 };
 
 export default function AjustesScreen() {
+  const { musicEnabled, setMusicEnabled, sfxEnabled, setSfxEnabled } =
+    useAudioSettings();
+
   const [activeModal, setActiveModal] = useState<
     "profile" | "password" | "delete" | "logout" | null
   >(null);
@@ -59,7 +63,6 @@ export default function AjustesScreen() {
       title: "Eliminar cuenta",
       subtitle: "Acción irreversible",
       iconName: "trash-can-outline",
-      tone: "danger",
       onPress: () => setActiveModal("delete"),
     },
     {
@@ -85,6 +88,63 @@ export default function AjustesScreen() {
         showsVerticalScrollIndicator={false}
       >
         <AppHeader />
+        <SectionTitle title="Sonido" />
+        <View className="mx-4 mb-4 rounded-2xl border-2 border-[#e8dfd4] bg-[#fff9f0]">
+          <View className="flex-row items-center justify-between px-4 py-3">
+            <View className="flex-row items-center gap-3">
+              <View className="h-9 w-9 items-center justify-center rounded-xl bg-[#f4efe6]">
+                <MaterialCommunityIcons
+                  name="music"
+                  size={18}
+                  color="#8b7355"
+                />
+              </View>
+              <View>
+                <Text className="text-sm font-semibold text-[#5c4a3d]">
+                  Música
+                </Text>
+                <Text className="text-[11px] text-[#9a8571]">
+                  Activar o desactivar el soundtrack
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={musicEnabled}
+              onValueChange={setMusicEnabled}
+              trackColor={{ false: "#e8dfd4", true: "#7cb69d" }}
+              thumbColor={musicEnabled ? "#fff9f0" : "#fff9f0"}
+            />
+          </View>
+
+          <View className="mx-4 h-[1px] bg-[#efe6db]" />
+
+          <View className="flex-row items-center justify-between px-4 py-3">
+            <View className="flex-row items-center gap-3">
+              <View className="h-9 w-9 items-center justify-center rounded-xl bg-[#f4efe6]">
+                <MaterialCommunityIcons
+                  name="volume-high"
+                  size={18}
+                  color="#8b7355"
+                />
+              </View>
+              <View>
+                <Text className="text-sm font-semibold text-[#5c4a3d]">
+                  Efectos de sonido
+                </Text>
+                <Text className="text-[11px] text-[#9a8571]">
+                  Activar o desactivar los sonidos de UI
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={sfxEnabled}
+              onValueChange={setSfxEnabled}
+              trackColor={{ false: "#e8dfd4", true: "#7cb69d" }}
+              thumbColor={sfxEnabled ? "#fff9f0" : "#fff9f0"}
+            />
+          </View>
+        </View>
+
         <SectionTitle title="Cuenta" />
         <View className="mx-4 rounded-2xl border-2 border-[#e8dfd4] bg-[#fff9f0]">
           {accountActions.map((action, index) => (
@@ -94,25 +154,15 @@ export default function AjustesScreen() {
                 className="flex-row items-center justify-between px-4 py-3"
               >
                 <View className="flex-row items-center gap-3">
-                  <View
-                    className={`h-9 w-9 items-center justify-center rounded-xl ${
-                      action.tone === "danger" ? "bg-[#fde8e8]" : "bg-[#f4efe6]"
-                    }`}
-                  >
+                  <View className="h-9 w-9 items-center justify-center rounded-xl bg-[#f4efe6]">
                     <MaterialCommunityIcons
                       name={action.iconName}
                       size={18}
-                      color={action.tone === "danger" ? "#c15757" : "#8b7355"}
+                      color="#8b7355"
                     />
                   </View>
                   <View>
-                    <Text
-                      className={`text-sm font-semibold ${
-                        action.tone === "danger"
-                          ? "text-[#c15757]"
-                          : "text-[#5c4a3d]"
-                      }`}
-                    >
+                    <Text className="text-sm font-semibold text-[#5c4a3d]">
                       {action.title}
                     </Text>
                     <Text className="text-[11px] text-[#9a8571]">
