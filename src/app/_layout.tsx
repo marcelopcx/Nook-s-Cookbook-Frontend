@@ -1,6 +1,7 @@
 import { Stack, usePathname } from "expo-router";
 import { AudioSettingsProvider } from "@/providers/AudioSettingsProvider";
 import { RecipesProvider } from "@/providers/RecipesProvider";
+import { SessionProvider } from "@/providers/SessionProvider";
 import { playPageTurnSfx, unloadPageTurnSfx } from "@/services/soundtrack";
 import { useEffect, useRef } from "react";
 import { View } from "react-native";
@@ -57,15 +58,17 @@ export default function RootLayout() {
 
   return (
     <View className="flex-1 bg-[#5c4a3d]">
-      <AudioSettingsProvider>
-        <RecipesProvider>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-            }}
-          />
-        </RecipesProvider>
-      </AudioSettingsProvider>
+      <SessionProvider>
+        <AudioSettingsProvider>
+          <RecipesProvider>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+              }}
+            />
+          </RecipesProvider>
+        </AudioSettingsProvider>
+      </SessionProvider>
     </View>
   );
 }

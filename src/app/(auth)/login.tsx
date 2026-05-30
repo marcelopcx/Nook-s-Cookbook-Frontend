@@ -1,4 +1,5 @@
 import { AppButton, AuthLayout, TextField } from "@/components";
+import { useSession } from "@/providers/SessionProvider";
 import { authService } from "@/services";
 import { getFieldErrors, loginSchema } from "@/validations";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -9,6 +10,7 @@ import { Pressable, Text, View } from "react-native";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { signIn } = useSession();
 
   useEffect(() => {
     stopSoundtrack();
@@ -50,7 +52,8 @@ export default function LoginScreen() {
     setApiError(null);
     setIsLoading(true);
     try {
-      await authService.login({ email, password });
+      const { token, user } = await authService.login({ email, password });
+      await signIn(token, user);
       router.replace("/inicio");
     } catch (error) {
       setApiError(

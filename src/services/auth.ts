@@ -1,4 +1,4 @@
-import { apiUrl } from "./api";
+import { apiFetch, parseErrorMessage } from "./api";
 
 type LoginRequest = {
   email: string;
@@ -37,18 +37,8 @@ function splitFullName(fullName: string): {
   return { nombre, apellido };
 }
 
-async function parseErrorMessage(response: Response): Promise<string> {
-  try {
-    const data = (await response.json()) as { error?: string };
-    if (data?.error) return data.error;
-  } catch {
-    // Ignore JSON parsing errors.
-  }
-  return "Error de servidor";
-}
-
 export async function login(request: LoginRequest): Promise<LoginResponse> {
-  const response = await fetch(apiUrl("/auth/login"), {
+  const response = await apiFetch("/auth/login", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -71,7 +61,7 @@ export async function register(
 ): Promise<RegisterResponse> {
   const { nombre, apellido } = splitFullName(request.fullName);
 
-  const response = await fetch(apiUrl("/auth/register"), {
+  const response = await apiFetch("/auth/register", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

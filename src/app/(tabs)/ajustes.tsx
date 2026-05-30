@@ -2,6 +2,8 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { AppHeader, SectionTitle } from "@/components/dashboard";
 import AppButton from "@/components/ui/AppButton";
 import { useAudioSettings } from "@/providers/AudioSettingsProvider";
+import { useSession } from "@/providers/SessionProvider";
+import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import {
   Modal,
@@ -24,15 +26,17 @@ type SettingAction = {
 export default function AjustesScreen() {
   const { musicEnabled, setMusicEnabled, sfxEnabled, setSfxEnabled } =
     useAudioSettings();
+  const { user, signOut } = useSession();
+  const router = useRouter();
 
   const [activeModal, setActiveModal] = useState<
     "profile" | "password" | "delete" | "logout" | null
   >(null);
-  const [displayName, setDisplayName] = useState("Nook User");
+  const [displayName, setDisplayName] = useState(user?.username ?? "Nook User");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState("");
-  const username = "nookuser";
+  const username = user?.username ?? "nookuser";
 
   const isPasswordMatch = useMemo(
     () => newPassword.length > 0 && newPassword === confirmPassword,
@@ -79,6 +83,12 @@ export default function AjustesScreen() {
     setNewPassword("");
     setConfirmPassword("");
     setDeleteConfirm("");
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    setActiveModal(null);
+    router.replace("/login");
   };
 
   return (
@@ -352,10 +362,7 @@ export default function AjustesScreen() {
                   </Text>
                 </View>
                 <View className="mt-3 flex flex-column">
-                  <AppButton
-                    title="Sí, cerrar sesión"
-                    onPress={handleCloseModal}
-                  />
+                  <AppButton title="Sí, cerrar sesión" onPress={handleLogout} />
                 </View>
                 <View className="mt-3 flex flex-column">
                   <AppButton
