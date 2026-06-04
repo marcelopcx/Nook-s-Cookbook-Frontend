@@ -4,7 +4,7 @@
     { "id": "postres", "label": "Postres", "iconName": "cupcake" },
     { "id": "comidas", "label": "Comidas", "iconName": "food" },
     { "id": "bebidas", "label": "Bebidas", "iconName": "cup" },
-    { "id": "favoritos", "label": "Favoritos", "iconName": "star" }
+    { "id": "favoritos", "label": "Favoritos", "iconName": "heart" }
   ],
   "grid": [
     { "id": "frutas", "label": "Frutas", "iconName": "fruit-cherries" },

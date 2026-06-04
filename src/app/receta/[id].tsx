@@ -102,7 +102,7 @@ export default function RecipeDetailScreen() {
                 <MaterialCommunityIcons
                   name="trash-can"
                   size={18}
-                  color="#7cb69d"
+                  color="#5c4a3d"
                 />
               </Pressable>
               <Pressable
