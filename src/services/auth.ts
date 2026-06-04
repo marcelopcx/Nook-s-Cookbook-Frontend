@@ -41,9 +41,7 @@ async function parseErrorMessage(response: Response): Promise<string> {
   try {
     const data = (await response.json()) as { error?: string };
     if (data?.error) return data.error;
-  } catch {
-    // Ignore JSON parsing errors.
-  }
+  } catch {}
   return "Error de servidor";
 }
 
