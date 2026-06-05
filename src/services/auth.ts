@@ -1,3 +1,4 @@
+import * as SecureStore from "expo-secure-store";
 import { apiUrl } from "./api";
 
 type LoginRequest = {
@@ -61,7 +62,13 @@ export async function login(request: LoginRequest): Promise<LoginResponse> {
     throw new Error(await parseErrorMessage(response));
   }
 
-  return (await response.json()) as LoginResponse;
+  const data = (await response.json()) as LoginResponse;
+
+  if (data.token) {
+    await SecureStore.setItemAsync("user_token", data.token);
+  }
+
+  return data;
 }
 
 export async function register(
@@ -89,4 +96,12 @@ export async function register(
   }
 
   return (await response.json()) as RegisterResponse;
+}
+
+export async function getToken(): Promise<string | null> {
+  return await SecureStore.getItemAsync("user_token");
+}
+
+export async function removeToken(): Promise<void> {
+  await SecureStore.deleteItemAsync("user_token");
 }

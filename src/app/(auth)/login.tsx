@@ -6,9 +6,11 @@ import { useRouter } from "expo-router";
 import { stopSoundtrack } from "@/services/soundtrack";
 import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import { useAuth } from "@/providers/AuthProvider";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { saveSession } = useAuth();
 
   useEffect(() => {
     stopSoundtrack();
@@ -50,7 +52,13 @@ export default function LoginScreen() {
     setApiError(null);
     setIsLoading(true);
     try {
-      await authService.login({ email, password });
+      const response = await authService.login({ email, password });
+
+      const username = response?.user?.username || email;
+      const nombreReal = (response?.user as any)?.nombre || "Usuario";
+
+      await saveSession(username, nombreReal);
+
       router.replace("/inicio");
     } catch (error) {
       setApiError(
