@@ -138,7 +138,7 @@ export default function MisRecetasScreen() {
         </View>
 
         <View className="px-4">
-          <View className="mb-3 flex-row items-center justify-between">
+          <View className="mb-3 flex-row items-baseline justify-between">
             <Text className="text-sm font-bold uppercase tracking-wider text-[#8b7355]">
               Grupos
             </Text>
@@ -147,12 +147,9 @@ export default function MisRecetasScreen() {
                 setGroupError(null);
                 setShowGroupModal(true);
               }}
-              className="flex-row items-center align-center justify-start gap-2 rounded-2xl border-2 border-[#e8dfd4] bg-[#fff9f0] px-2 py-2"
+              className="flex-row items-center justify-center rounded-xl bg-[#7cb69d] px-2.5 py-1.5 active:bg-[#6aa48b]"
             >
-              <MaterialCommunityIcons name="plus" size={16} color="#5c4a3d" />
-              <Text className="text-xs font-bold leading-none text-[#5c4a3d] my-[2px] pr-3">
-                Crear grupo
-              </Text>
+              <MaterialCommunityIcons name="plus" size={16} color="#ffffff" />
             </Pressable>
           </View>
 

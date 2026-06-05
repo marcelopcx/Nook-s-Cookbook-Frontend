@@ -18,7 +18,7 @@ type Recipe = {
 type RecipeDetails = {
   id: string;
   servings: number;
-  ingredients: string[];
+  ingredients: any[];
   steps: string[];
   tips: string[];
 };
@@ -179,15 +179,24 @@ export default function RecipeDetailScreen() {
               </Text>
             </View>
             <View className="gap-2">
-              {details.ingredients.map((item, index) => (
-                <View
-                  key={`ingredient-${index}`}
-                  className="flex-row items-center gap-3"
-                >
-                  <View className="h-2 w-2 rounded-full bg-[#7cb69d]" />
-                  <Text className="flex-1 text-sm text-[#5c4a3d]">{item}</Text>
-                </View>
-              ))}
+              {details.ingredients.map((item, index) => {
+                const isObject = typeof item === "object" && item !== null;
+                const ingredientText = isObject
+                  ? `${item.cantidad || ""} ${item.nombre || ""}`.trim()
+                  : String(item);
+
+                return (
+                  <View
+                    key={`ingredient-${index}`}
+                    className="flex-row items-center gap-3"
+                  >
+                    <View className="h-2 w-2 rounded-full bg-[#7cb69d]" />
+                    <Text className="flex-1 text-sm text-[#5c4a3d]">
+                      {ingredientText}
+                    </Text>
+                  </View>
+                );
+              })}
             </View>
           </View>
 

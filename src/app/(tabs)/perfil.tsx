@@ -18,24 +18,49 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useState } from "react";
+import { useAuth } from "@/providers/AuthProvider";
 
 export default function PerfilScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+
   const [section, setSection] = useState<"achievements" | "saved" | "created">(
     "achievements",
   );
+
+  let derivedUsername = "Usuario de Nook";
+
+  if (user?.nombre && user.nombre.trim() !== "" && user.nombre !== "Usuario") {
+    derivedUsername = user.nombre;
+  } else if (user?.username) {
+    const rawPart = user.username.split("@")[0];
+    derivedUsername = rawPart
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2")
+      .replace(/[._-]/g, " ")
+      .trim()
+      .split(/\s+/)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
+  }
+
   const avatarIconName = profileData.avatarIconName as React.ComponentProps<
     typeof MaterialCommunityIcons
   >["name"];
   const { width } = useWindowDimensions();
-  const containerPadding = 16; // px-4
+  const containerPadding = 16;
   const gap = 16;
   const available = Math.max(0, width - containerPadding * 2);
   const itemWidth = Math.floor((available - gap) / 2);
 
+  const completedAchievementsCount = achievementsData.filter(
+    (a) => a.status === "complete",
+  ).length;
+
   const handleOpenRecipe = (id: string) => {
     router.push({ pathname: "/receta/[id]", params: { id } });
   };
+
   return (
     <View className="flex-1 bg-[#fdf8f3]">
       <ScrollView
@@ -54,13 +79,11 @@ export default function PerfilScreen() {
                   color="#fff"
                 />
               </View>
-              <View className="flex-1">
+              <View className="flex-1 justify-center">
                 <Text className="text-xl font-bold text-[#5c4a3d]">
-                  {profileData.name}
+                  {derivedUsername}
                 </Text>
-                <Text className="text-sm text-[#8b7355]">
-                  {profileData.email}
-                </Text>
+
                 <View className="mt-1 flex-row items-center gap-1">
                   <MaterialCommunityIcons
                     name="star"
@@ -105,9 +128,9 @@ export default function PerfilScreen() {
               style={{ width: itemWidth, marginRight: gap, marginBottom: gap }}
             >
               <StatCard
-                label="Tiempo Total"
-                value={`${statsData.totalTimeMinutes} min`}
-                iconName="clock"
+                label="Logros Completados"
+                value={`${completedAchievementsCount} / ${achievementsData.length}`}
+                iconName="medal"
                 backgroundClassName="bg-[#ffd9b3]/30"
               />
             </View>
