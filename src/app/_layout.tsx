@@ -1,4 +1,5 @@
 import { Stack, usePathname } from "expo-router";
+import { AuthProvider } from "@/providers/AuthProvider"; // 1. Importación del nuevo AuthProvider
 import { AudioSettingsProvider } from "@/providers/AudioSettingsProvider";
 import { RecipesProvider } from "@/providers/RecipesProvider";
 import { playPageTurnSfx, unloadPageTurnSfx } from "@/services/soundtrack";
@@ -6,10 +7,7 @@ import { useEffect, useRef } from "react";
 import { View } from "react-native";
 import "react-native-reanimated";
 
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from "expo-router";
+export { ErrorBoundary } from "expo-router";
 
 export default function RootLayout() {
   const pathname = usePathname();
@@ -22,16 +20,10 @@ export default function RootLayout() {
   };
 
   const shouldPlaySfxForTransition = (from: string, to: string) => {
-    // Silenciar transiciones automáticas de arranque/auth.
     if (from === "/" && to === "/login") return false;
     if (from === "/login" && to === "/inicio") return false;
-
-    // Por si el router hace un redirect directo al dashboard.
     if (from === "/" && to === "/inicio") return false;
-
-    // No reproducir SFX dentro del flujo de autenticación.
     if (isAuthPath(from) && isAuthPath(to)) return false;
-
     return true;
   };
 
@@ -57,15 +49,17 @@ export default function RootLayout() {
 
   return (
     <View className="flex-1 bg-[#5c4a3d]">
-      <AudioSettingsProvider>
-        <RecipesProvider>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-            }}
-          />
-        </RecipesProvider>
-      </AudioSettingsProvider>
+      <AuthProvider>
+        <AudioSettingsProvider>
+          <RecipesProvider>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+              }}
+            />
+          </RecipesProvider>
+        </AudioSettingsProvider>
+      </AuthProvider>
     </View>
   );
 }
