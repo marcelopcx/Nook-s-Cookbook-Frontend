@@ -1,44 +1,58 @@
 [
   {
-    "id": "first-recipe",
-    "title": "Primera Receta",
-    "description": "Guarda tu primera receta",
-    "icon": "food",
+    "id": "1",
+    "title": "Primeros Pasos",
+    "description": "Crear la primera receta propia en la aplicación.",
+    "icon": "chef-hat",
     "status": "complete"
   },
   {
-    "id": "creative-chef",
-    "title": "Chef Creativo",
-    "description": "Crea tu primera receta",
-    "icon": "chef-hat",
-    "status": "locked"
+    "id": "2",
+    "title": "Aprendiz de Cocina",
+    "description": "Crear un total de 10 recetas propias.",
+    "icon": "cookie",
+    "status": "complete"
   },
   {
-    "id": "collector",
-    "title": "Coleccionista",
-    "description": "Guarda 5 recetas",
-    "icon": "book",
-    "status": "locked"
+    "id": "3",
+    "title": "Maestro Culinario",
+    "description": "Crear un total de 100 recetas propias.",
+    "icon": "trophy-variant",
+    "status": "pending"
   },
   {
-    "id": "pastry-master",
-    "title": "Maestro Pastelero",
-    "description": "Guarda 3 postres",
-    "icon": "cupcake",
-    "status": "locked"
+    "id": "4",
+    "title": "Miembro Fundador",
+    "description": "Crear el primer grupo o comunidad culinaria.",
+    "icon": "account-group",
+    "status": "pending"
   },
   {
-    "id": "mixologist",
-    "title": "Mixologo",
-    "description": "Guarda 3 bebidas",
-    "icon": "glass-cocktail",
-    "status": "locked"
+    "id": "5",
+    "title": "El Gran Banquete",
+    "description": "Guardar una receta con más de 15 ingredientes, 20 pasos y >= 120 minutos.",
+    "icon": "silverware-spoon-fork",
+    "status": "pending"
   },
   {
-    "id": "island-chef",
-    "title": "Chef de la Isla",
-    "description": "Crea 5 recetas propias",
-    "icon": "island",
-    "status": "locked"
+    "id": "6",
+    "title": "Guardado en Memoria",
+    "description": "Añadir cualquier receta a la sección de 'Mis Recetas' por primera vez.",
+    "icon": "bookmark-heart",
+    "status": "complete"
+  },
+  {
+    "id": "7",
+    "title": "La niña esta triste",
+    "description": "Desactivar la música de fondo o los efectos de sonido en la configuración.",
+    "icon": "volume-off",
+    "status": "pending"
+  },
+  {
+    "id": "8",
+    "title": "Calabaza, Calabaza...",
+    "description": "Este es un logro secreto, desbloquearlo te hará muy feliz.",
+    "icon": "halloween",
+    "status": "pending"
   }
 ]

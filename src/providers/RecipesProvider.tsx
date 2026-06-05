@@ -16,10 +16,15 @@ export type Recipe = {
   iconName?: string;
 };
 
+export type IngredientStructure = {
+  nombre: string;
+  cantidad: string;
+};
+
 export type RecipeDetails = {
   id: string;
   servings: number;
-  ingredients: string[];
+  ingredients: IngredientStructure[];
   steps: string[];
   tips: string[];
 };
@@ -40,7 +45,6 @@ type RecipesContextValue = {
   updateRecipe: (id: string, patch: Partial<Recipe>) => void;
   updateDetails: (id: string, patch: Partial<RecipeDetails>) => void;
   deleteRecipe: (id: string) => void;
-
   createGroup: (name: string, recipeIds: string[]) => void;
   updateGroup: (
     id: string,
@@ -54,7 +58,7 @@ const RecipesContext = createContext<RecipesContextValue | null>(null);
 export function RecipesProvider({ children }: { children: React.ReactNode }) {
   const [recipes, setRecipes] = useState(recipesData as Recipe[]);
   const [recipeDetails, setRecipeDetails] = useState(
-    recipeDetailsData as RecipeDetails[],
+    recipeDetailsData as unknown as RecipeDetails[],
   );
   const [groups, setGroups] = useState<RecipeGroup[]>([]);
 
@@ -93,7 +97,6 @@ export function RecipesProvider({ children }: { children: React.ReactNode }) {
       setRecipes((prev) => prev.filter((r) => r.id !== id));
       setRecipeDetails((prev) => prev.filter((d) => d.id !== id));
 
-      // Mantener consistencia: si una receta se elimina, se quita de todos los grupos.
       setGroups((prev) =>
         prev.map((g) => ({
           ...g,
@@ -144,11 +147,9 @@ export function RecipesProvider({ children }: { children: React.ReactNode }) {
 
       const recipeIdSet = new Set(group.recipeIds);
 
-      // Eliminar recetas del grupo (y sus detalles)
       setRecipes((prev) => prev.filter((r) => !recipeIdSet.has(r.id)));
       setRecipeDetails((prev) => prev.filter((d) => !recipeIdSet.has(d.id)));
 
-      // Quitar el grupo y limpiar referencias en otros grupos (por consistencia)
       setGroups((prev) =>
         prev
           .filter((g) => g.id !== id)
