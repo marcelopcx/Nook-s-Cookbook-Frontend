@@ -8,3 +8,4 @@ export { default as RecipeCard } from "./RecipeCard";
 export { default as FeaturedRecipeCard } from "./FeaturedRecipeCard";
 export { default as StatCard } from "./StatCard";
 export { default as AchievementCard } from "./AchievementCard";
+export { default as AchievementUnlockedModal } from "./AchievementUnlockedModal";

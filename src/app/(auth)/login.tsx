@@ -54,10 +54,18 @@ export default function LoginScreen() {
     try {
       const response = await authService.login({ email, password });
 
-      const username = response?.user?.username || email;
-      const nombreReal = (response?.user as any)?.nombre || "Usuario";
-
-      await saveSession(username, nombreReal);
+      try {
+        const perfil = await authService.getMe();
+        await saveSession(
+          perfil.username,
+          [perfil.nombre, perfil.apellido].filter(Boolean).join(" "),
+          perfil.id,
+          perfil.correo,
+        );
+      } catch {
+        const username = response?.user?.username || email;
+        await saveSession(username, username, response?.user?.id);
+      }
 
       router.replace("/inicio");
     } catch (error) {

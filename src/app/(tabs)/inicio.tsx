@@ -1,34 +1,21 @@
 import {
   AppHeader,
   CategoryTab,
-  CategoryTile,
   FeaturedRecipeCard,
   RecipeCard,
   SearchBar,
   SectionTitle,
 } from "@/components/dashboard";
+import { KeyboardAwareScrollView } from "@/components";
 import categoriesData from "@/data/categories.json";
 import { useRecipes } from "@/providers/RecipesProvider";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { ScrollView, View } from "react-native";
-
-type Recipe = {
-  id: string;
-  title: string;
-  category: string;
-  rating: number;
-  timeMinutes: number;
-  difficulty: string;
-  imageUrl: string;
-  isFeatured: boolean;
-  isSaved: boolean;
-  isFavorite: boolean;
-};
+import { ActivityIndicator, Text, View } from "react-native";
 
 export default function InicioScreen() {
   const router = useRouter();
-  const { recipes } = useRecipes();
+  const { recipes, isLoading, error, refreshRecipes } = useRecipes();
   const [search, setSearch] = useState("");
   const [selectedTabId, setSelectedTabId] = useState(
     categoriesData.tabs.find((t) => t.id === "Todo")?.id ??
@@ -43,7 +30,7 @@ export default function InicioScreen() {
   const filteredRecipes = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    return (recipes as Recipe[]).filter((recipe) => {
+    return recipes.filter((recipe) => {
       const matchesTab = (() => {
         if (selectedTabId === "Todo") return true;
         if (selectedTabId === "favoritos") return recipe.isFavorite;
@@ -59,18 +46,18 @@ export default function InicioScreen() {
   }, [recipes, selectedTabId, search]);
 
   const featuredRecipe = useMemo(
-    () => filteredRecipes.find((recipe) => recipe.isFeatured),
+    () => filteredRecipes.find((recipe) => recipe.isFeatured) ?? filteredRecipes[0],
     [filteredRecipes],
   );
 
   const moreRecipes = useMemo(
-    () => filteredRecipes.filter((recipe) => !recipe.isFeatured),
-    [filteredRecipes],
+    () => filteredRecipes.filter((recipe) => recipe.id !== featuredRecipe?.id),
+    [filteredRecipes, featuredRecipe],
   );
 
   return (
     <View className="flex-1 bg-[#fdf8f3]">
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={{ paddingBottom: 10 }}
         showsVerticalScrollIndicator={false}
       >
@@ -78,6 +65,24 @@ export default function InicioScreen() {
         <View className="my-4">
           <SearchBar value={search} onChangeText={setSearch} />
         </View>
+
+        {isLoading ? (
+          <View className="items-center py-8">
+            <ActivityIndicator color="#7cb69d" />
+          </View>
+        ) : null}
+
+        {error ? (
+          <View className="mx-4 mb-4 rounded-2xl border-2 border-[#e8dfd4] bg-[#fff9f0] p-4">
+            <Text className="text-sm text-[#c15757]">{error}</Text>
+            <Text
+              className="mt-2 text-sm font-semibold text-[#7cb69d]"
+              onPress={() => void refreshRecipes()}
+            >
+              Reintentar
+            </Text>
+          </View>
+        ) : null}
 
         <View className="mb-6 px-4">
           <View className="w-full flex-row">
@@ -121,7 +126,7 @@ export default function InicioScreen() {
             </View>
           ))}
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <View
         className="absolute bottom-0 left-0 right-0 h-[120px]"
         pointerEvents="none"

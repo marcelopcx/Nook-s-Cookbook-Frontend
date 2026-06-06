@@ -1,22 +1,29 @@
 import { AppHeader } from "@/components/dashboard";
+import { KeyboardAwareScrollView } from "@/components";
+import { useKeyboardHeight } from "@/components/hooks/useKeyboardHeight";
+import { useScrollIntoViewOnFocus } from "@/components/hooks/useScrollIntoViewOnFocus";
 import basketData from "@/data/basket.json";
 import { useRecipes } from "@/providers/RecipesProvider";
+import * as profileService from "@/services/profile";
+import * as recipesService from "@/services/recipes";
+import type { IngredienteResponse } from "@/types/api";
+import { formatTimeMinutes } from "@/utils/recipeMappers";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { RefObject } from "react";
 import {
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   View,
   ActivityIndicator,
   Image,
   Platform,
+  ScrollView,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { authService } from "@/services";
 
 const steps = [
   "Detalles",
@@ -24,11 +31,11 @@ const steps = [
   "Imagen",
   "Ingredientes",
   "Pasos",
-  "Notas",
   "Resumen",
 ];
 
 interface Ingredient {
+  id_ingrediente: number;
   nombre: string;
   cantidad: string;
 }
@@ -44,8 +51,20 @@ export default function CestaScreen() {
   const effectiveEditId = ignoreEditId ? undefined : editId;
   const isEditing =
     typeof effectiveEditId === "string" && effectiveEditId.length > 0;
-  const { getRecipeById, getDetailsById, updateRecipe, updateDetails } =
-    useRecipes();
+  const {
+    fetchRecipeDetail,
+    createRecipe,
+    updateRecipeApi,
+  } = useRecipes();
+
+  const [catalogIngredients, setCatalogIngredients] = useState<
+    IngredienteResponse[]
+  >([]);
+  const [selectedCatalogId, setSelectedCatalogId] = useState<number | null>(
+    null,
+  );
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const mutedTextColor = "#8b7355";
   const placeholderColor = "#8b7355";
@@ -67,10 +86,35 @@ export default function CestaScreen() {
 
   const [stepInput, setStepInput] = useState("");
   const [stepsList, setStepsList] = useState<string[]>([]);
-  const [noteInput, setNoteInput] = useState("");
-  const [notesList, setNotesList] = useState<string[]>([]);
   const [showErrors, setShowErrors] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const scrollRef = useRef<ScrollView>(null);
+  const contentRef = useRef<View>(null);
+  const descriptionFieldRef = useRef<View>(null);
+  const recipeNameFieldRef = useRef<View>(null);
+  const ingredientsFieldRef = useRef<View>(null);
+  const stepFieldRef = useRef<View>(null);
+  const [focusedFieldRef, setFocusedFieldRef] = useState<RefObject<View | null> | null>(
+    null,
+  );
+
+  const scrollIntoView = useScrollIntoViewOnFocus(scrollRef, contentRef);
+  const keyboardHeight = useKeyboardHeight();
+
+  const scrollToField = useCallback(
+    (fieldRef: RefObject<View | null>) => {
+      setFocusedFieldRef(fieldRef);
+      scrollIntoView(fieldRef, { extraOffset: 12, headerOffset: 140 });
+    },
+    [scrollIntoView],
+  );
+
+  useEffect(() => {
+    if (focusedFieldRef && keyboardHeight > 0) {
+      scrollIntoView(focusedFieldRef, { extraOffset: 12, headerOffset: 140 });
+    }
+  }, [focusedFieldRef, keyboardHeight, scrollIntoView]);
 
   const resetForm = useCallback(() => {
     setRecipeName("");
@@ -87,8 +131,6 @@ export default function CestaScreen() {
     setIngredients([]);
     setStepInput("");
     setStepsList([]);
-    setNoteInput("");
-    setNotesList([]);
     setSaved(false);
     setShowErrors(false);
     setStep(0);
@@ -124,57 +166,52 @@ export default function CestaScreen() {
   );
 
   useEffect(() => {
+    void profileService.listIngredients().then(setCatalogIngredients).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (!isEditing) return;
     if (saved) return;
 
-    const recipe = getRecipeById(effectiveEditId);
-    const details = getDetailsById(effectiveEditId);
-    if (!recipe || !details) return;
+    void (async () => {
+      const result = await fetchRecipeDetail(effectiveEditId!);
+      if (!result) return;
 
-    const difficultyId =
-      basketData.difficulties.find(
-        (d) => d.label.toLowerCase() === recipe.difficulty.toLowerCase(),
-      )?.id ?? basketData.difficulties[0].id;
+      const { recipe, details } = result;
 
-    setRecipeName(recipe.title);
-    setDescription("");
-    setCategory(recipe.category);
-    setTimeMinutes(recipe.timeMinutes);
-    setServings(details.servings);
-    setDifficulty(difficultyId);
+      const difficultyId =
+        basketData.difficulties.find(
+          (d) => d.label.toLowerCase() === recipe.difficulty.toLowerCase(),
+        )?.id ?? basketData.difficulties[0].id;
 
-    if (recipe.imageUrl) {
-      setRemoteImageUrl(recipe.imageUrl);
-    }
+      setRecipeName(recipe.title);
+      setDescription(details.description);
+      setCategory(recipe.category);
+      setTimeMinutes(recipe.timeMinutes);
+      setServings(details.servings);
+      setDifficulty(difficultyId);
 
-    const ingredientesEstructurados = details.ingredients.map(
-      (ingrediente: any) => {
-        if (
-          ingrediente &&
-          typeof ingrediente === "object" &&
-          "nombre" in ingrediente
-        ) {
-          return ingrediente as Ingredient;
-        }
-        return {
-          nombre: ingrediente,
-          cantidad: "1 ud.",
-        };
-      },
-    );
+      if (recipe.imageUrl) {
+        setRemoteImageUrl(recipe.imageUrl);
+      }
 
-    setIngredients(ingredientesEstructurados);
+      setIngredients(
+        details.ingredients.map((ingrediente) => ({
+          id_ingrediente: ingrediente.id_ingrediente ?? 0,
+          nombre: ingrediente.nombre,
+          cantidad: ingrediente.cantidad,
+        })),
+      );
 
-    setStepsList(details.steps);
-    setNotesList(details.tips);
-    setIngredientInput("");
-    setIngredientQuantityInput("");
-    setStepInput("");
-    setNoteInput("");
-    setSaved(false);
-    setShowErrors(false);
-    setStep(0);
-  }, [effectiveEditId, getDetailsById, getRecipeById, isEditing, saved]);
+      setStepsList(details.steps);
+      setIngredientInput("");
+      setIngredientQuantityInput("");
+      setStepInput("");
+      setSaved(false);
+      setShowErrors(false);
+      setStep(0);
+    })();
+  }, [effectiveEditId, fetchRecipeDetail, isEditing, saved]);
 
   useEffect(() => {
     if (isEditing) return;
@@ -209,42 +246,12 @@ export default function CestaScreen() {
   const handleUploadImage = async (uri: string) => {
     setUploading(true);
     try {
-      const formData = new FormData();
-      const filename = uri.split("/").pop() || "imagen.jpg";
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : `image/jpeg`;
-
       const formattedUri =
         Platform.OS === "android" && !uri.startsWith("file://")
           ? `file://${uri}`
           : uri;
-
-      formData.append("file", {
-        uri: formattedUri,
-        name: filename,
-        type,
-      } as any);
-
-      const token = await authService.getToken();
-
-      const response = await fetch("http://192.168.1.101:8080/recetas/imagen", {
-        method: "POST",
-        body: formData,
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token || ""}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(`Server error (${response.status}): ${errorBody}`);
-      }
-
-      const data = await response.json();
-      if (data.secure_url) {
-        setRemoteImageUrl(data.secure_url);
-      }
+      const secureUrl = await recipesService.uploadRecipeImage(formattedUri);
+      setRemoteImageUrl(secureUrl);
     } catch (error) {
       console.error("Error al subir la imagen:", error);
     } finally {
@@ -299,28 +306,43 @@ export default function CestaScreen() {
     setStep((current) => Math.max(current - 1, 0));
   };
 
+  const filteredCatalog = useMemo(() => {
+    const query = ingredientInput.trim().toLowerCase();
+    if (!query) return catalogIngredients.slice(0, 8);
+    return catalogIngredients
+      .filter((item) => item.nombre.toLowerCase().includes(query))
+      .slice(0, 8);
+  }, [catalogIngredients, ingredientInput]);
+
   const handleAddIngredient = () => {
-    const nameTrimmed = ingredientInput.trim();
     const qtyTrimmed = ingredientQuantityInput.trim();
+    const catalogItem = selectedCatalogId
+      ? catalogIngredients.find((item) => item.id === selectedCatalogId)
+      : filteredCatalog.find(
+          (item) =>
+            item.nombre.toLowerCase() === ingredientInput.trim().toLowerCase(),
+        );
 
-    if (!nameTrimmed || !qtyTrimmed) return;
+    if (!catalogItem || !qtyTrimmed) return;
 
-    if (
-      ingredients.some(
-        (item) => item.nombre.toLowerCase() === nameTrimmed.toLowerCase(),
-      )
-    ) {
+    if (ingredients.some((item) => item.id_ingrediente === catalogItem.id)) {
       setIngredientInput("");
       setIngredientQuantityInput("");
+      setSelectedCatalogId(null);
       return;
     }
 
     setIngredients((prev) => [
       ...prev,
-      { nombre: nameTrimmed, cantidad: qtyTrimmed },
+      {
+        id_ingrediente: catalogItem.id,
+        nombre: catalogItem.nombre,
+        cantidad: qtyTrimmed,
+      },
     ]);
     setIngredientInput("");
     setIngredientQuantityInput("");
+    setSelectedCatalogId(null);
   };
 
   const handleRemoveIngredient = (nombre: string) => {
@@ -340,50 +362,61 @@ export default function CestaScreen() {
     setStepsList((prev) => prev.filter((stepItem) => stepItem !== item));
   };
 
-  const handleAddNote = () => {
-    const trimmed = noteInput.trim();
-    if (!trimmed) return;
-    setNotesList((prev) => [...prev, trimmed]);
-    setNoteInput("");
-  };
+  const buildPayload = () => ({
+    nombre: recipeName.trim(),
+    descripcion: description.trim() || category,
+    raciones: servings,
+    tiempo: formatTimeMinutes(timeMinutes),
+    dificultad: difficultyLabel,
+    imagen: remoteImageUrl || null,
+    pasos: stepsList.map((instruccion, index) => ({
+      numero_paso: index + 1,
+      instruccion,
+    })),
+    ingredientes: ingredients.map((item) => ({
+      id_ingrediente: item.id_ingrediente,
+      cantidad: item.cantidad,
+    })),
+    utensilios: [] as { id_utensilio: number; cantidad: string | null }[],
+  });
 
-  const handleRemoveNote = (item: string) => {
-    setNotesList((prev) => prev.filter((note) => note !== item));
-  };
-
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!canAdvance) {
       setShowErrors(true);
       return;
     }
 
-    if (isEditing) {
-      updateRecipe(effectiveEditId!, {
-        title: recipeName.trim(),
-        category,
-        timeMinutes,
-        difficulty: difficultyLabel,
-        isSaved: true,
-        imageUrl: remoteImageUrl,
-      });
+    setSaving(true);
+    setSaveError(null);
 
-      updateDetails(effectiveEditId!, {
-        servings,
-        ingredients,
-        steps: stepsList,
-        tips: notesList,
-      });
+    try {
+      const payload = buildPayload();
+
+      if (isEditing) {
+        await updateRecipeApi(effectiveEditId!, payload);
+      } else {
+        await createRecipe(payload);
+      }
+
+      setSaved(true);
+    } catch (error) {
+      setSaveError(
+        error instanceof Error ? error.message : "No se pudo guardar la receta",
+      );
+    } finally {
+      setSaving(false);
     }
-
-    setSaved(true);
   };
 
   return (
     <View className="flex-1 bg-[#fdf8f3]">
-      <ScrollView
+      <KeyboardAwareScrollView
+        ref={scrollRef}
         contentContainerStyle={{ paddingBottom: 32 }}
+        keyboardExtraPadding={8}
         showsVerticalScrollIndicator={false}
       >
+        <View ref={contentRef} collapsable={false}>
         <AppHeader />
 
         <View className="px-4 pt-4">
@@ -479,7 +512,7 @@ export default function CestaScreen() {
                   {/* PASO 1: DETALLES */}
                   {step === 0 && (
                     <View className="w-full gap-4">
-                      <View className="w-full">
+                      <View ref={recipeNameFieldRef} collapsable={false} className="w-full">
                         <Text className="mb-2 text-sm font-bold text-[#5c4a3d]">
                           Nombre
                         </Text>
@@ -488,10 +521,12 @@ export default function CestaScreen() {
                           onChangeText={setRecipeName}
                           placeholder="Ej: Tarta de Manzana"
                           placeholderTextColor={placeholderColor}
+                          onFocus={() => scrollToField(recipeNameFieldRef)}
+                          onBlur={() => setFocusedFieldRef(null)}
                           className="w-full rounded-xl border-2 border-[#e8dfd4] bg-[#fdf8f3] px-4 py-3 text-[#5c4a3d]"
                         />
                       </View>
-                      <View className="w-full">
+                      <View ref={descriptionFieldRef} collapsable={false} className="w-full">
                         <Text className="mb-2 text-sm font-bold text-[#5c4a3d]">
                           Descripción
                         </Text>
@@ -503,6 +538,8 @@ export default function CestaScreen() {
                           multiline
                           numberOfLines={3}
                           textAlignVertical="top"
+                          onFocus={() => scrollToField(descriptionFieldRef)}
+                          onBlur={() => setFocusedFieldRef(null)}
                           className="w-full rounded-xl border-2 border-[#e8dfd4] bg-[#fdf8f3] px-4 py-3 text-[#5c4a3d] h-24"
                         />
                       </View>
@@ -637,26 +674,58 @@ export default function CestaScreen() {
                         Agrega ingredientes
                       </Text>
 
-                      <View className="flex-row w-full gap-2">
+                      <View ref={ingredientsFieldRef} collapsable={false} className="flex-row w-full gap-2">
                         <View className="flex-1">
                           <TextInput
                             value={ingredientQuantityInput}
                             onChangeText={setIngredientQuantityInput}
                             placeholder="Cant. (200 g)"
                             placeholderTextColor={placeholderColor}
+                            onFocus={() => scrollToField(ingredientsFieldRef)}
+                            onBlur={() => setFocusedFieldRef(null)}
                             className="w-full rounded-xl border-2 border-[#e8dfd4] bg-[#fdf8f3] px-3 py-2.5 text-[#5c4a3d]"
                           />
                         </View>
                         <View className="flex-[2]">
                           <TextInput
                             value={ingredientInput}
-                            onChangeText={setIngredientInput}
-                            placeholder="Ingrediente (Harina)"
+                            onChangeText={(text) => {
+                              setIngredientInput(text);
+                              setSelectedCatalogId(null);
+                            }}
+                            placeholder="Ingrediente del catálogo"
                             placeholderTextColor={placeholderColor}
+                            onFocus={() => scrollToField(ingredientsFieldRef)}
+                            onBlur={() => setFocusedFieldRef(null)}
                             className="w-full rounded-xl border-2 border-[#e8dfd4] bg-[#fdf8f3] px-3 py-2.5 text-[#5c4a3d]"
                           />
                         </View>
                       </View>
+
+                      {filteredCatalog.length > 0 ? (
+                        <View className="rounded-xl border border-[#e8dfd4] bg-white">
+                          {filteredCatalog.map((item) => (
+                            <Pressable
+                              key={item.id}
+                              onPress={() => {
+                                setSelectedCatalogId(item.id);
+                                setIngredientInput(item.nombre);
+                              }}
+                              className={`px-3 py-2 border-b border-[#f5ebe0] ${selectedCatalogId === item.id ? "bg-[#f0f7f3]" : ""}`}
+                            >
+                              <Text className="text-sm text-[#5c4a3d]">
+                                {item.nombre}
+                                {item.tipo_nombre ? (
+                                  <Text className="text-xs text-[#8b7355]">
+                                    {" "}
+                                    ({item.tipo_nombre})
+                                  </Text>
+                                ) : null}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      ) : null}
 
                       <Pressable
                         onPress={handleAddIngredient}
@@ -716,12 +785,14 @@ export default function CestaScreen() {
                       <Text className="text-sm font-bold text-[#5c4a3d]">
                         Pasos de preparación
                       </Text>
-                      <View className="flex-row gap-2 w-full items-center">
+                      <View ref={stepFieldRef} collapsable={false} className="flex-row gap-2 w-full items-center">
                         <TextInput
                           value={stepInput}
                           onChangeText={setStepInput}
                           placeholder="Ej: Mezcla todo..."
                           placeholderTextColor={placeholderColor}
+                          onFocus={() => scrollToField(stepFieldRef)}
+                          onBlur={() => setFocusedFieldRef(null)}
                           className="flex-1 rounded-xl border-2 border-[#e8dfd4] bg-[#fdf8f3] px-4 py-2.5 text-[#5c4a3d]"
                         />
                         <Pressable
@@ -774,72 +845,8 @@ export default function CestaScreen() {
                     </View>
                   )}
 
-                  {/* PASO 6: NOTAS */}
+                  {/* PASO 6: RESUMEN */}
                   {step === 5 && (
-                    <View className="w-full gap-3">
-                      <Text className="text-sm font-bold text-[#5c4a3d]">
-                        Notas extra (opcional)
-                      </Text>
-                      <View className="flex-row gap-2 w-full items-center">
-                        <TextInput
-                          value={noteInput}
-                          onChangeText={setNoteInput}
-                          placeholder="Ej: Servir frío..."
-                          placeholderTextColor={placeholderColor}
-                          className="flex-1 rounded-xl border-2 border-[#e8dfd4] bg-[#fdf8f3] px-4 py-2.5 text-[#5c4a3d]"
-                        />
-                        <Pressable
-                          onPress={handleAddNote}
-                          className="h-11 w-11 items-center justify-center rounded-xl bg-[#7cb69d]"
-                        >
-                          <MaterialCommunityIcons
-                            name="plus"
-                            size={20}
-                            color="#fff"
-                          />
-                        </Pressable>
-                      </View>
-
-                      {notesList.length > 0 && (
-                        <View className="w-full rounded-2xl border-2 border-[#e8dfd4] bg-[#fdf8f3] p-3 max-h-40 overflow-hidden mt-5">
-                          <ScrollView
-                            nestedScrollEnabled
-                            showsVerticalScrollIndicator={true}
-                          >
-                            {notesList.map((item, index) => (
-                              <View
-                                key={index}
-                                className="flex-row items-center justify-between py-2 border-b border-[#f5ebe0] last:border-0 pr-4"
-                              >
-                                <View className="flex-row items-center flex-1 pr-3">
-                                  <View className="h-2 w-2 rounded-full bg-[#f9d77e] mr-2 flex-shrink-0" />
-                                  <Text
-                                    className="text-sm text-[#5c4a3d] flex-1"
-                                    numberOfLines={1}
-                                  >
-                                    {item}
-                                  </Text>
-                                </View>
-                                <Pressable
-                                  onPress={() => handleRemoveNote(item)}
-                                  className="h-7 w-7 items-center justify-center rounded-full bg-[#f5ebe0] flex-shrink-0"
-                                >
-                                  <MaterialCommunityIcons
-                                    name="close"
-                                    size={13}
-                                    color={mutedTextColor}
-                                  />
-                                </Pressable>
-                              </View>
-                            ))}
-                          </ScrollView>
-                        </View>
-                      )}
-                    </View>
-                  )}
-
-                  {/* PASO 7: RESUMEN */}
-                  {step === 6 && (
                     <View className="w-full gap-3">
                       <View className="w-full rounded-2xl border border-[#e8dfd4] bg-[#fdf8f3] p-3 flex-row gap-3 items-center">
                         {remoteImageUrl ? (
@@ -914,27 +921,39 @@ export default function CestaScreen() {
                     </Pressable>
                   )}
                   <Pressable
-                    onPress={
-                      step === steps.length - 1 ? handleSave : handleNext
+                    onPress={() =>
+                      step === steps.length - 1
+                        ? void handleSave()
+                        : handleNext()
                     }
+                    disabled={!canAdvance || saving}
                     className={`flex-1 items-center justify-center rounded-xl h-12 ${
-                      canAdvance ? "bg-[#7cb69d]" : "bg-[#e8dfd4]"
+                      canAdvance && !saving ? "bg-[#7cb69d]" : "bg-[#e8dfd4]"
                     }`}
                   >
                     <Text
-                      className={`font-bold ${canAdvance ? "text-white" : "text-[#8b7355]"}`}
+                      className={`font-bold ${canAdvance && !saving ? "text-white" : "text-[#8b7355]"}`}
                     >
                       {step === steps.length - 1
-                        ? "Guardar receta"
+                        ? saving
+                          ? "Guardando..."
+                          : "Guardar receta"
                         : "Siguiente"}
                     </Text>
                   </Pressable>
                 </View>
+
+                {saveError ? (
+                  <Text className="mt-3 text-center text-xs font-semibold text-[#c15757]">
+                    {saveError}
+                  </Text>
+                ) : null}
               </View>
             )}
           </View>
         </View>
-      </ScrollView>
+        </View>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

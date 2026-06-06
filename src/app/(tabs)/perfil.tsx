@@ -4,47 +4,79 @@ import {
   StatCard,
   RecipeCard,
 } from "@/components/dashboard";
-import achievementsData from "@/data/achievements.json";
-import profileData from "@/data/profile.json";
-import statsData from "@/data/stats.json";
-import recipesData from "@/data/recipes.json";
+import { useAuth } from "@/providers/AuthProvider";
+import { useAchievements } from "@/providers/AchievementsProvider";
+import * as recipesService from "@/services/recipes";
+import type { RecetaListItem } from "@/types/api";
+import { mapRecetaToRecipe } from "@/utils/recipeMappers";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   ScrollView,
   Text,
   View,
   Pressable,
   useWindowDimensions,
 } from "react-native";
-import { useState } from "react";
-import { useAuth } from "@/providers/AuthProvider";
+
+const ACHIEVEMENT_ICONS = [
+  "star",
+  "medal",
+  "trophy",
+  "chef-hat",
+  "heart",
+  "basket",
+  "music-off",
+  "delete-outline",
+] as const;
 
 export default function PerfilScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const {
+    allAchievements,
+    myAchievementIds,
+    isLoading: achievementsLoading,
+    refreshAchievements,
+  } = useAchievements();
 
   const [section, setSection] = useState<"achievements" | "saved" | "created">(
     "achievements",
   );
+  const [recipesLoading, setRecipesLoading] = useState(true);
+  const [favoriteRecipes, setFavoriteRecipes] = useState<RecetaListItem[]>([]);
+  const [createdRecipes, setCreatedRecipes] = useState<RecetaListItem[]>([]);
 
-  let derivedUsername = "Usuario de Nook";
+  const loadRecipeData = useCallback(async () => {
+    setRecipesLoading(true);
+    try {
+      const [favoritos, misRecetas] = await Promise.all([
+        recipesService.listMyFavorites(),
+        recipesService.listMyRecipes(),
+      ]);
+      setFavoriteRecipes(favoritos);
+      setCreatedRecipes(misRecetas);
+    } finally {
+      setRecipesLoading(false);
+    }
+  }, []);
 
-  if (user?.nombre && user.nombre.trim() !== "" && user.nombre !== "Usuario") {
-    derivedUsername = user.nombre;
-  } else if (user?.username) {
-    const rawPart = user.username.split("@")[0];
-    derivedUsername = rawPart
-      .replace(/([a-z])([A-Z])/g, "$1 $2")
-      .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2")
-      .replace(/[._-]/g, " ")
-      .trim()
-      .split(/\s+/)
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ");
-  }
+  useFocusEffect(
+    useCallback(() => {
+      void refreshAchievements();
+      void loadRecipeData();
+    }, [refreshAchievements, loadRecipeData]),
+  );
 
-  const avatarIconName = profileData.avatarIconName as React.ComponentProps<
+  const loading = achievementsLoading || recipesLoading;
+
+  const derivedUsername =
+    user?.nombre && user.nombre.trim() !== "" ? user.nombre : "Usuario de Nook";
+
+  const avatarIconName = "account" as React.ComponentProps<
     typeof MaterialCommunityIcons
   >["name"];
   const { width } = useWindowDimensions();
@@ -53,13 +85,86 @@ export default function PerfilScreen() {
   const available = Math.max(0, width - containerPadding * 2);
   const itemWidth = Math.floor((available - gap) / 2);
 
-  const completedAchievementsCount = achievementsData.filter(
-    (a) => a.status === "complete",
-  ).length;
+  const completedAchievementsCount = myAchievementIds.size;
 
   const handleOpenRecipe = (id: string) => {
     router.push({ pathname: "/receta/[id]", params: { id } });
   };
+
+  const achievementsView = useMemo(
+    () =>
+      allAchievements.map((achievement, idx) => (
+        <View
+          key={achievement.id}
+          style={{
+            width: itemWidth,
+            height: 148,
+            marginRight: idx % 2 === 0 ? gap : 0,
+            marginBottom: gap,
+          }}
+        >
+          <AchievementCard
+            title={achievement.nombre}
+            description={achievement.descripcion ?? ""}
+            iconName={ACHIEVEMENT_ICONS[idx % ACHIEVEMENT_ICONS.length]}
+            completed={myAchievementIds.has(achievement.id)}
+          />
+        </View>
+      )),
+    [allAchievements, itemWidth, gap, myAchievementIds],
+  );
+
+  const favoriteCards = useMemo(
+    () =>
+      favoriteRecipes.map((receta, idx) => {
+        const recipe = mapRecetaToRecipe(receta, { isFavorite: true });
+        return (
+          <View
+            key={recipe.id}
+            style={{
+              width: itemWidth,
+              marginRight: idx % 2 === 0 ? gap : 0,
+              marginBottom: gap,
+            }}
+          >
+            <RecipeCard
+              title={recipe.title}
+              imageUrl={recipe.imageUrl}
+              rating={recipe.rating}
+              timeMinutes={recipe.timeMinutes}
+              onPress={() => handleOpenRecipe(recipe.id)}
+            />
+          </View>
+        );
+      }),
+    [favoriteRecipes, itemWidth, gap],
+  );
+
+  const createdCards = useMemo(
+    () =>
+      createdRecipes.map((receta, idx) => {
+        const recipe = mapRecetaToRecipe(receta, { isFeatured: true });
+        return (
+          <View
+            key={recipe.id}
+            style={{
+              width: itemWidth,
+              marginRight: idx % 2 === 0 ? gap : 0,
+              marginBottom: gap,
+            }}
+          >
+            <RecipeCard
+              title={recipe.title}
+              imageUrl={recipe.imageUrl}
+              rating={recipe.rating}
+              timeMinutes={recipe.timeMinutes}
+              onPress={() => handleOpenRecipe(recipe.id)}
+            />
+          </View>
+        );
+      }),
+    [createdRecipes, itemWidth, gap],
+  );
 
   return (
     <View className="flex-1 bg-[#fdf8f3]">
@@ -83,7 +188,11 @@ export default function PerfilScreen() {
                 <Text className="text-xl font-bold text-[#5c4a3d]">
                   {derivedUsername}
                 </Text>
-
+                {user?.username ? (
+                  <Text className="mt-1 text-xs text-[#8b7355]">
+                    @{user.username}
+                  </Text>
+                ) : null}
                 <View className="mt-1 flex-row items-center gap-1">
                   <MaterialCommunityIcons
                     name="star"
@@ -91,7 +200,7 @@ export default function PerfilScreen() {
                     color="#f9d77e"
                   />
                   <Text className="text-xs text-[#8b7355]">
-                    Nivel: {profileData.level}
+                    Chef isleño
                   </Text>
                 </View>
               </View>
@@ -106,8 +215,8 @@ export default function PerfilScreen() {
               style={{ width: itemWidth, marginRight: gap, marginBottom: gap }}
             >
               <StatCard
-                label="Recetas Guardadas"
-                value={statsData.savedRecipes}
+                label="Recetas Favoritas"
+                value={favoriteRecipes.length}
                 iconName="heart"
                 backgroundClassName="bg-[#f4b8c5]/20"
               />
@@ -118,7 +227,7 @@ export default function PerfilScreen() {
             >
               <StatCard
                 label="Mis Creaciones"
-                value={statsData.createdRecipes}
+                value={createdRecipes.length}
                 iconName="basket"
                 backgroundClassName="bg-[#7cb69d]/20"
               />
@@ -129,7 +238,7 @@ export default function PerfilScreen() {
             >
               <StatCard
                 label="Logros Completados"
-                value={`${completedAchievementsCount} / ${achievementsData.length}`}
+                value={`${completedAchievementsCount} / ${allAchievements.length}`}
                 iconName="medal"
                 backgroundClassName="bg-[#ffd9b3]/30"
               />
@@ -140,7 +249,7 @@ export default function PerfilScreen() {
             >
               <StatCard
                 label="Nivel Chef"
-                value={statsData.chefLevel}
+                value={Math.min(10, completedAchievementsCount + 1)}
                 iconName="star"
                 backgroundClassName="bg-[#f9d77e]/30"
               />
@@ -187,7 +296,7 @@ export default function PerfilScreen() {
                     section === "saved" ? "text-white" : "text-[#8b7355]"
                   }`}
                 >
-                  Guardadas
+                  Favoritas
                 </Text>
               </View>
             </Pressable>
@@ -215,85 +324,39 @@ export default function PerfilScreen() {
             </Pressable>
           </View>
 
-          <View className="gap-3">
-            {section === "achievements" ? (
-              <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                {achievementsData.map((achievement, idx) => (
-                  <View
-                    key={achievement.id}
-                    style={{
-                      width: itemWidth,
-                      marginRight: idx % 2 === 0 ? gap : 0,
-                      marginBottom: gap,
-                    }}
-                  >
-                    <AchievementCard
-                      title={achievement.title}
-                      description={achievement.description}
-                      iconName={
-                        achievement.icon as React.ComponentProps<
-                          typeof MaterialCommunityIcons
-                        >["name"]
-                      }
-                      completed={achievement.status === "complete"}
-                    />
-                  </View>
-                ))}
-              </View>
-            ) : section === "saved" ? (
-              <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                {recipesData
-                  .filter((r) => r.isSaved)
-                  .map((r, idx) => (
-                    <View
-                      key={r.id}
-                      style={{
-                        width: itemWidth,
-                        marginRight: idx % 2 === 0 ? gap : 0,
-                        marginBottom: gap,
-                      }}
-                    >
-                      <RecipeCard
-                        title={r.title}
-                        imageUrl={r.imageUrl}
-                        rating={r.rating}
-                        timeMinutes={r.timeMinutes}
-                        onPress={() => handleOpenRecipe(r.id)}
-                      />
-                    </View>
-                  ))}
-              </View>
-            ) : (
-              <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                {recipesData.filter((r) => r.isFeatured).length === 0 ? (
-                  <Text className="text-sm text-[#8b7355]">
-                    No hay recetas creadas aún.
-                  </Text>
-                ) : (
-                  recipesData
-                    .filter((r) => r.isFeatured)
-                    .map((r, idx) => (
-                      <View
-                        key={r.id}
-                        style={{
-                          width: itemWidth,
-                          marginRight: idx % 2 === 0 ? gap : 0,
-                          marginBottom: gap,
-                        }}
-                      >
-                        <RecipeCard
-                          title={r.title}
-                          imageUrl={r.imageUrl}
-                          rating={r.rating}
-                          timeMinutes={r.timeMinutes}
-                          onPress={() => handleOpenRecipe(r.id)}
-                        />
-                      </View>
-                    ))
-                )}
-              </View>
-            )}
-          </View>
+          {loading ? (
+            <View className="items-center py-8">
+              <ActivityIndicator color="#7cb69d" />
+            </View>
+          ) : (
+            <View className="gap-3">
+              {section === "achievements" ? (
+                <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                  {achievementsView}
+                </View>
+              ) : section === "saved" ? (
+                <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                  {favoriteCards.length > 0 ? (
+                    favoriteCards
+                  ) : (
+                    <Text className="text-sm text-[#8b7355]">
+                      No tienes recetas favoritas aún.
+                    </Text>
+                  )}
+                </View>
+              ) : (
+                <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                  {createdCards.length > 0 ? (
+                    createdCards
+                  ) : (
+                    <Text className="text-sm text-[#8b7355]">
+                      No hay recetas creadas aún.
+                    </Text>
+                  )}
+                </View>
+              )}
+            </View>
+          )}
           <View className="h-6" />
         </View>
       </ScrollView>

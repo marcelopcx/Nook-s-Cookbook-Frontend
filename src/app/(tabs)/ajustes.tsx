@@ -1,10 +1,14 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { AppHeader, SectionTitle } from "@/components/dashboard";
-import AppButton from "@/components/ui/AppButton";
+import { KeyboardAwareModal } from "@/components";
+import { useAchievements } from "@/providers/AchievementsProvider";
 import { useAudioSettings } from "@/providers/AudioSettingsProvider";
-import { useMemo, useState } from "react";
+import { useAuth } from "@/providers/AuthProvider";
+import * as profileService from "@/services/profile";
+import { scheduleCalabazaUnlock } from "@/services/pendingAchievementUnlock";
+import { useRouter } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Modal,
   Pressable,
   ScrollView,
   Switch,
@@ -22,17 +26,40 @@ type SettingAction = {
 };
 
 export default function AjustesScreen() {
+  const router = useRouter();
+  const { user, logout, loadProfile } = useAuth();
   const { musicEnabled, setMusicEnabled, sfxEnabled, setSfxEnabled } =
     useAudioSettings();
+  const { tryClaimNinaTristeAchievement } = useAchievements();
 
   const [activeModal, setActiveModal] = useState<
     "profile" | "password" | "delete" | "logout" | null
   >(null);
-  const [displayName, setDisplayName] = useState("Nook User");
+  const [displayName, setDisplayName] = useState("");
+  const [correo, setCorreo] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [isPublic, setIsPublic] = useState(true);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState("");
-  const username = "nookuser";
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const username = user?.username ?? "";
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const perfil = await profileService.getMe();
+        setDisplayName(
+          [perfil.nombre, perfil.apellido].filter(Boolean).join(" "),
+        );
+        setCorreo(perfil.correo);
+        setTelefono(perfil.telefono ?? "");
+        setIsPublic(perfil.public);
+      } catch {}
+    })();
+  }, [user?.username]);
 
   const isPasswordMatch = useMemo(
     () => newPassword.length > 0 && newPassword === confirmPassword,
@@ -47,7 +74,7 @@ export default function AjustesScreen() {
     {
       id: "profile",
       title: "Editar perfil",
-      subtitle: "Nombre e imagen",
+      subtitle: "Nombre, correo y visibilidad",
       iconName: "account-edit-outline",
       onPress: () => setActiveModal("profile"),
     },
@@ -79,6 +106,82 @@ export default function AjustesScreen() {
     setNewPassword("");
     setConfirmPassword("");
     setDeleteConfirm("");
+    setError(null);
+  };
+
+  const handleSaveProfile = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const parts = displayName.trim().split(/\s+/);
+      const nombre = parts[0] ?? "";
+      const apellido = parts.length > 1 ? parts.slice(1).join(" ") : null;
+
+      await profileService.updateMe({
+        nombre,
+        apellido,
+        correo,
+        telefono: telefono.trim() || null,
+        public: isPublic,
+      });
+      await loadProfile();
+      handleCloseModal();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo actualizar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!isPasswordMatch) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await profileService.updateMe({ password: newPassword });
+      handleCloseModal();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo cambiar la clave");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!isDeleteEnabled) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await profileService.deleteMe();
+      await scheduleCalabazaUnlock();
+      await logout();
+      handleCloseModal();
+      router.replace("/login");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo eliminar la cuenta");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    handleCloseModal();
+    router.replace("/login");
+  };
+
+  const handleMusicToggle = (enabled: boolean) => {
+    setMusicEnabled(enabled);
+    if (!enabled) {
+      void tryClaimNinaTristeAchievement();
+    }
+  };
+
+  const handleSfxToggle = (enabled: boolean) => {
+    setSfxEnabled(enabled);
+    if (!enabled) {
+      void tryClaimNinaTristeAchievement();
+    }
   };
 
   return (
@@ -110,7 +213,7 @@ export default function AjustesScreen() {
             </View>
             <Switch
               value={musicEnabled}
-              onValueChange={setMusicEnabled}
+              onValueChange={handleMusicToggle}
               trackColor={{ false: "#e8dfd4", true: "#7cb69d" }}
               thumbColor={musicEnabled ? "#fff9f0" : "#fff9f0"}
             />
@@ -138,7 +241,7 @@ export default function AjustesScreen() {
             </View>
             <Switch
               value={sfxEnabled}
-              onValueChange={setSfxEnabled}
+              onValueChange={handleSfxToggle}
               trackColor={{ false: "#e8dfd4", true: "#7cb69d" }}
               thumbColor={sfxEnabled ? "#fff9f0" : "#fff9f0"}
             />
@@ -184,15 +287,10 @@ export default function AjustesScreen() {
         </View>
       </ScrollView>
 
-      <Modal
+      <KeyboardAwareModal
         visible={activeModal !== null}
-        transparent
-        animationType="fade"
         onRequestClose={handleCloseModal}
       >
-        <View className="flex-1 justify-center bg-black/40 px-5">
-          <Pressable className="absolute inset-0" onPress={handleCloseModal} />
-          <View className="rounded-3xl border-2 border-[#e8dfd4] bg-[#fff9f0] p-5">
             {activeModal === "profile" ? (
               <View className="flex direction-column space-y-4 w-full py-2">
                 <View className="w-full">
@@ -200,12 +298,12 @@ export default function AjustesScreen() {
                     Editar perfil
                   </Text>
                   <Text className="text-xs text-[#9a8571]">
-                    Actualiza tu nombre. La imagen se agregará después.
+                    Actualiza tu información personal.
                   </Text>
                 </View>
-                <View className=" w-full">
-                  <Text className="mb-4 text-xs font-semibold text-[#8b7355]">
-                    Nombre
+                <View className="w-full">
+                  <Text className="mb-2 text-xs font-semibold text-[#8b7355]">
+                    Nombre completo
                   </Text>
                   <TextInput
                     value={displayName}
@@ -215,27 +313,64 @@ export default function AjustesScreen() {
                     className="rounded-xl border-2 border-[#e8dfd4] bg-white px-4 py-3 text-sm text-[#5c4a3d]"
                   />
                 </View>
-                <Text className=" text-xs font-semibold text-[#8b7355]">
-                  Imagen
-                </Text>
-                <View className="rounded-xl border-2 border-[#e8dfd4] bg-white px-4 py-3 w-full">
-                  <Text className="text-sm text-[#9a8571]">
-                    Imagen de perfil
+                <View className="w-full">
+                  <Text className="mb-2 text-xs font-semibold text-[#8b7355]">
+                    Correo
                   </Text>
-                </View>
-                <View className="mt-3 flex flex-column">
-                  <AppButton
-                    title="Guardar cambios"
-                    onPress={handleCloseModal}
+                  <TextInput
+                    value={correo}
+                    onChangeText={setCorreo}
+                    placeholder="correo@ejemplo.com"
+                    placeholderTextColor="#b8a899"
+                    autoCapitalize="none"
+                    className="rounded-xl border-2 border-[#e8dfd4] bg-white px-4 py-3 text-sm text-[#5c4a3d]"
                   />
                 </View>
-                <View className="mt-3 flex flex-column">
-                  <AppButton
-                    title="Cancelar"
-                    onPress={handleCloseModal}
-                    variant="secondary"
-                    className="mt-4"
+                <View className="w-full">
+                  <Text className="mb-2 text-xs font-semibold text-[#8b7355]">
+                    Teléfono
+                  </Text>
+                  <TextInput
+                    value={telefono}
+                    onChangeText={setTelefono}
+                    placeholder="555-0000"
+                    placeholderTextColor="#b8a899"
+                    className="rounded-xl border-2 border-[#e8dfd4] bg-white px-4 py-3 text-sm text-[#5c4a3d]"
                   />
+                </View>
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-xs font-semibold text-[#8b7355]">
+                    Perfil público
+                  </Text>
+                  <Switch
+                    value={isPublic}
+                    onValueChange={setIsPublic}
+                    trackColor={{ false: "#e8dfd4", true: "#7cb69d" }}
+                  />
+                </View>
+                {error ? (
+                  <Text className="text-xs text-[#c15757]">{error}</Text>
+                ) : null}
+                <View className="mt-6 flex-row gap-3">
+                  <Pressable
+                    onPress={handleCloseModal}
+                    className="flex-1 items-center rounded-2xl border-2 border-[#e8dfd4] bg-white py-2.5"
+                  >
+                    <Text className="text-sm font-bold text-[#8b7355]">
+                      Cancelar
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => void handleSaveProfile()}
+                    disabled={saving}
+                    className={`flex-1 items-center rounded-2xl py-2.5 ${
+                      saving ? "bg-[#e8dfd4]" : "bg-[#7ec8a3]"
+                    }`}
+                  >
+                    <Text className="text-sm font-bold text-white">
+                      {saving ? "Guardando..." : "Guardar"}
+                    </Text>
+                  </Pressable>
                 </View>
               </View>
             ) : null}
@@ -281,20 +416,29 @@ export default function AjustesScreen() {
                     </Text>
                   ) : null}
                 </View>
-                <View className="mt-3 flex flex-column">
-                  <AppButton
-                    title="Actualizar contraseña"
+                {error ? (
+                  <Text className="text-xs text-[#c15757]">{error}</Text>
+                ) : null}
+                <View className="mt-6 flex-row gap-3">
+                  <Pressable
                     onPress={handleCloseModal}
-                    disabled={!isPasswordMatch}
-                  />
-                </View>
-                <View className="mt-3 flex flex-column">
-                  <AppButton
-                    title="Cancelar"
-                    onPress={handleCloseModal}
-                    variant="secondary"
-                    className="mt-4"
-                  />
+                    className="flex-1 items-center rounded-2xl border-2 border-[#e8dfd4] bg-white py-2.5"
+                  >
+                    <Text className="text-sm font-bold text-[#8b7355]">
+                      Cancelar
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => void handleUpdatePassword()}
+                    disabled={!isPasswordMatch || saving}
+                    className={`flex-1 items-center rounded-2xl py-2.5 ${
+                      !isPasswordMatch || saving ? "bg-[#e8dfd4]" : "bg-[#7ec8a3]"
+                    }`}
+                  >
+                    <Text className="text-sm font-bold text-white">
+                      {saving ? "Actualizando..." : "Actualizar"}
+                    </Text>
+                  </Pressable>
                 </View>
               </View>
             ) : null}
@@ -311,7 +455,7 @@ export default function AjustesScreen() {
                 </View>
                 <View className="gap-2">
                   <Text className="mb-2 text-xs font-semibold text-[#8b7355]">
-                    Usuario ( {username} )
+                    Usuario ({username})
                   </Text>
                   <TextInput
                     value={deleteConfirm}
@@ -322,21 +466,29 @@ export default function AjustesScreen() {
                     className="rounded-xl border-2 border-[#e8dfd4] bg-white px-4 py-3 text-sm text-[#5c4a3d]"
                   />
                 </View>
-                <View className="mt-3 flex flex-column">
-                  <AppButton
-                    title="Eliminar cuenta"
+                {error ? (
+                  <Text className="text-xs text-[#c15757]">{error}</Text>
+                ) : null}
+                <View className="mt-6 flex-row gap-3">
+                  <Pressable
                     onPress={handleCloseModal}
-                    disabled={!isDeleteEnabled}
-                    className="bg-[#e46b6b]"
-                  />
-                </View>
-                <View className="mt-3 flex flex-column">
-                  <AppButton
-                    title="Cancelar"
-                    onPress={handleCloseModal}
-                    variant="secondary"
-                    className="mt-4"
-                  />
+                    className="flex-1 items-center rounded-2xl border-2 border-[#e8dfd4] bg-white py-2.5"
+                  >
+                    <Text className="text-sm font-bold text-[#8b7355]">
+                      Cancelar
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => void handleDeleteAccount()}
+                    disabled={!isDeleteEnabled || saving}
+                    className={`flex-1 items-center rounded-2xl py-2.5 ${
+                      !isDeleteEnabled || saving ? "bg-[#e8dfd4]" : "bg-[#c15757]"
+                    }`}
+                  >
+                    <Text className="text-sm font-bold text-white">
+                      {saving ? "Eliminando..." : "Eliminar"}
+                    </Text>
+                  </Pressable>
                 </View>
               </View>
             ) : null}
@@ -351,25 +503,27 @@ export default function AjustesScreen() {
                     ¿Estás seguro de que quieres salir?
                   </Text>
                 </View>
-                <View className="mt-3 flex flex-column">
-                  <AppButton
-                    title="Sí, cerrar sesión"
+                <View className="mt-6 flex-row gap-3">
+                  <Pressable
                     onPress={handleCloseModal}
-                  />
-                </View>
-                <View className="mt-3 flex flex-column">
-                  <AppButton
-                    title="Cancelar"
-                    onPress={handleCloseModal}
-                    variant="secondary"
-                    className="mt-4"
-                  />
+                    className="flex-1 items-center rounded-2xl border-2 border-[#e8dfd4] bg-white py-2.5"
+                  >
+                    <Text className="text-sm font-bold text-[#8b7355]">
+                      Cancelar
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => void handleLogout()}
+                    className="flex-1 items-center rounded-2xl bg-[#7ec8a3] py-2.5"
+                  >
+                    <Text className="text-sm font-bold text-white">
+                      Cerrar sesión
+                    </Text>
+                  </Pressable>
                 </View>
               </View>
             ) : null}
-          </View>
-        </View>
-      </Modal>
+      </KeyboardAwareModal>
     </View>
   );
 }

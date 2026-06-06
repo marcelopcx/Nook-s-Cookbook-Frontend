@@ -1,11 +1,11 @@
+import { useKeyboardHeight } from "@/components/hooks/useKeyboardHeight";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  type KeyboardEvent,
   Text,
   TouchableWithoutFeedback,
   View,
@@ -22,29 +22,8 @@ export default function AuthLayout({
   subtitle,
   children,
 }: AuthLayoutProps) {
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-
-  useEffect(() => {
-    const showEvent =
-      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvent =
-      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-
-    const showSub = Keyboard.addListener(showEvent, (event: KeyboardEvent) => {
-      setKeyboardVisible(true);
-      setKeyboardHeight(event.endCoordinates?.height ?? 0);
-    });
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      setKeyboardVisible(false);
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
+  const keyboardHeight = useKeyboardHeight();
+  const keyboardVisible = keyboardHeight > 0;
 
   return (
     <View className="flex-1 bg-[#f5f0ea]">

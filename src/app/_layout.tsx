@@ -1,5 +1,6 @@
 import { Stack, usePathname } from "expo-router";
-import { AuthProvider } from "@/providers/AuthProvider"; // 1. Importación del nuevo AuthProvider
+import { AuthProvider } from "@/providers/AuthProvider";
+import { AchievementsProvider } from "@/providers/AchievementsProvider";
 import { AudioSettingsProvider } from "@/providers/AudioSettingsProvider";
 import { RecipesProvider } from "@/providers/RecipesProvider";
 import { playPageTurnSfx, unloadPageTurnSfx } from "@/services/soundtrack";
@@ -50,15 +51,17 @@ export default function RootLayout() {
   return (
     <View className="flex-1 bg-[#5c4a3d]">
       <AuthProvider>
-        <AudioSettingsProvider>
-          <RecipesProvider>
-            <Stack
-              screenOptions={{
-                headerShown: false,
-              }}
-            />
-          </RecipesProvider>
-        </AudioSettingsProvider>
+        <AchievementsProvider>
+          <AudioSettingsProvider>
+            <RecipesProvider>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                }}
+              />
+            </RecipesProvider>
+          </AudioSettingsProvider>
+        </AchievementsProvider>
       </AuthProvider>
     </View>
   );

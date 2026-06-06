@@ -16,28 +16,35 @@ export default function AchievementCard({
 }: AchievementCardProps) {
   return (
     <View
-      className={`w-full rounded-xl border-2 p-3 ${
+      className={`h-[148px] w-full flex-col rounded-xl border-2 p-3 ${
         completed
           ? "border-[#f9d77e] bg-[#fff9f0]"
           : "border-[#e8dfd4] bg-[#f5ebe0]/50 opacity-60"
       }`}
-      style={{ position: "relative" }}
     >
       {completed ? (
-        <View style={{ position: "absolute", top: 8, right: 8 }}>
+        <View className="absolute right-2 top-2">
           <Text className="text-xs font-medium text-[#d4a54a]">Completado</Text>
         </View>
       ) : null}
 
       <MaterialCommunityIcons name={iconName} size={22} color="#f9d77e" />
       <Text
-        className={`mt-1 text-sm font-bold ${
+        numberOfLines={2}
+        ellipsizeMode="tail"
+        className={`mt-1 min-h-[36px] text-sm font-bold ${
           completed ? "text-[#5c4a3d]" : "text-[#8b7355]"
         }`}
       >
         {title}
       </Text>
-      <Text className="text-xs text-[#8b7355]">{description}</Text>
+      <Text
+        numberOfLines={3}
+        ellipsizeMode="tail"
+        className="mt-1 flex-1 text-xs leading-4 text-[#8b7355]"
+      >
+        {description}
+      </Text>
     </View>
   );
 }

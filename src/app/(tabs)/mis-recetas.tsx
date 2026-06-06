@@ -5,13 +5,14 @@ import {
   SearchBar,
   SectionTitle,
 } from "@/components/dashboard";
+import { KeyboardAwareModal, KeyboardAwareScrollView } from "@/components";
 import categoriesData from "@/data/categories.json";
 import { useRecipes } from "@/providers/RecipesProvider";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import { useMemo, useState } from "react";
 import {
-  Modal,
+  ActivityIndicator,
   Pressable,
   ScrollView,
   Text,
@@ -19,20 +20,15 @@ import {
   View,
 } from "react-native";
 
-type Recipe = {
-  id: string;
-  title: string;
-  category: string;
-  rating: number;
-  timeMinutes: number;
-  imageUrl: string;
-  isSaved: boolean;
-  isFavorite: boolean;
-};
-
 export default function MisRecetasScreen() {
   const router = useRouter();
-  const { recipes, groups, createGroup } = useRecipes();
+  const {
+    recipes,
+    groups,
+    myRecipeIds,
+    isLoading,
+    createGroup,
+  } = useRecipes();
   const [search, setSearch] = useState("");
   const [selectedTabId, setSelectedTabId] = useState(
     categoriesData.tabs.find((t) => t.id === "Todo")?.id ??
@@ -42,8 +38,10 @@ export default function MisRecetasScreen() {
 
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupDescription, setNewGroupDescription] = useState("");
   const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([]);
   const [groupError, setGroupError] = useState<string | null>(null);
+  const [groupSaving, setGroupSaving] = useState(false);
 
   const handleOpenRecipe = (id: string) => {
     router.push({
@@ -53,21 +51,17 @@ export default function MisRecetasScreen() {
   };
 
   const handleOpenGroup = (id: string) => {
-    router.push({
-      pathname: "/grupo/[id]",
-      params: { id },
-    });
+    router.push({ pathname: "/grupo/[id]", params: { id } } as unknown as Href);
   };
 
-  const allSavedRecipes = useMemo(() => {
-    return (recipes as Recipe[]).filter((recipe) => recipe.isSaved);
-  }, [recipes]);
+  const myRecipes = useMemo(() => {
+    return recipes.filter((recipe) => myRecipeIds.has(recipe.id));
+  }, [recipes, myRecipeIds]);
 
   const savedRecipes = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const allSaved = allSavedRecipes;
 
-    return allSaved.filter((recipe) => {
+    return myRecipes.filter((recipe) => {
       const matchesTab = (() => {
         if (selectedTabId === "Todo") return true;
         if (selectedTabId === "favoritos") return recipe.isFavorite;
@@ -80,7 +74,7 @@ export default function MisRecetasScreen() {
 
       return recipe.title.toLowerCase().includes(query);
     });
-  }, [allSavedRecipes, selectedTabId, search]);
+  }, [myRecipes, selectedTabId, search]);
 
   const toggleRecipeSelection = (id: string) => {
     setSelectedRecipeIds((prev) =>
@@ -90,12 +84,13 @@ export default function MisRecetasScreen() {
 
   const resetGroupModal = () => {
     setNewGroupName("");
+    setNewGroupDescription("");
     setSelectedRecipeIds([]);
     setGroupError(null);
     setShowGroupModal(false);
   };
 
-  const handleCreateGroup = () => {
+  const handleCreateGroup = async () => {
     const name = newGroupName.trim();
     if (!name) {
       setGroupError("Escribe un nombre para el grupo.");
@@ -107,13 +102,22 @@ export default function MisRecetasScreen() {
       return;
     }
 
-    createGroup(name, selectedRecipeIds);
-    resetGroupModal();
+    setGroupSaving(true);
+    try {
+      await createGroup(name, selectedRecipeIds, newGroupDescription.trim() || undefined);
+      resetGroupModal();
+    } catch (error) {
+      setGroupError(
+        error instanceof Error ? error.message : "No se pudo crear el grupo",
+      );
+    } finally {
+      setGroupSaving(false);
+    }
   };
 
   return (
     <View className="flex-1 bg-[#fdf8f3]">
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
       >
@@ -121,6 +125,12 @@ export default function MisRecetasScreen() {
         <View className="mb-4">
           <SearchBar value={search} onChangeText={setSearch} />
         </View>
+
+        {isLoading ? (
+          <View className="items-center py-6">
+            <ActivityIndicator color="#7cb69d" />
+          </View>
+        ) : null}
 
         <View className="mb-6 px-4">
           <View className="w-full flex-row">
@@ -174,7 +184,7 @@ export default function MisRecetasScreen() {
               <Pressable
                 key={group.id}
                 onPress={() => handleOpenGroup(group.id)}
-                className="mr-3 w-40 rounded-3xl border-2 border-[#e8dfd4] bg-[#fff9f0] px-3 py-2"
+                className="mr-3 w-44 rounded-3xl border-2 border-[#e8dfd4] bg-[#fff9f0] px-3 py-2"
               >
                 <View className="flex-row items-center gap-2">
                   <View className="h-7 w-7 items-center justify-center rounded-xl bg-[#f4efe6]">
@@ -193,7 +203,7 @@ export default function MisRecetasScreen() {
                       {group.name}
                     </Text>
                     <Text className="text-[10px] text-[#8b7355]">
-                      {group.recipeIds.length} recetas
+                      {group.numRecetas} recetas • {group.numSeguidores} seguidores
                     </Text>
                   </View>
                 </View>
@@ -216,18 +226,23 @@ export default function MisRecetasScreen() {
             </View>
           ))}
         </View>
-      </ScrollView>
 
-      <Modal
+        {!isLoading && savedRecipes.length === 0 ? (
+          <View className="mx-4 mt-4 rounded-3xl border-2 border-[#e8dfd4] bg-[#fff9f0] p-5">
+            <Text className="text-sm font-semibold text-[#5c4a3d]">
+              No tienes recetas creadas
+            </Text>
+            <Text className="mt-1 text-xs text-[#8b7355]">
+              Usa la pestaña Cesta para crear tu primera receta.
+            </Text>
+          </View>
+        ) : null}
+      </KeyboardAwareScrollView>
+
+      <KeyboardAwareModal
         visible={showGroupModal}
-        transparent
-        animationType="fade"
         onRequestClose={resetGroupModal}
       >
-        <View className="flex-1 justify-center bg-black/40 px-5">
-          <Pressable className="absolute inset-0" onPress={resetGroupModal} />
-
-          <View className="rounded-3xl border-2 border-[#e8dfd4] bg-[#fff9f0] p-5">
             <View className="mb-3">
               <Text className="text-base font-bold text-[#5c4a3d]">
                 Crear grupo
@@ -253,21 +268,34 @@ export default function MisRecetasScreen() {
               />
             </View>
 
+            <View className="mb-4">
+              <Text className="mb-2 text-xs font-semibold text-[#8b7355]">
+                Descripción (opcional)
+              </Text>
+              <TextInput
+                value={newGroupDescription}
+                onChangeText={setNewGroupDescription}
+                placeholder="Describe tu grupo..."
+                placeholderTextColor="#b8a899"
+                className="rounded-xl border-2 border-[#e8dfd4] bg-white px-4 py-3 text-sm text-[#5c4a3d]"
+              />
+            </View>
+
             <View className="mb-2">
               <Text className="mb-2 text-xs font-semibold text-[#8b7355]">
                 Recetas
               </Text>
               <View className="max-h-64 rounded-2xl border-2 border-[#e8dfd4] bg-white">
                 <ScrollView showsVerticalScrollIndicator={false}>
-                  {allSavedRecipes.length === 0 ? (
+                  {myRecipes.length === 0 ? (
                     <View className="px-4 py-3">
                       <Text className="text-sm text-[#8b7355]">
-                        No tienes recetas guardadas.
+                        No tienes recetas creadas.
                       </Text>
                     </View>
                   ) : null}
 
-                  {allSavedRecipes.map((recipe, index) => {
+                  {myRecipes.map((recipe, index) => {
                     const selected = selectedRecipeIds.includes(recipe.id);
                     return (
                       <View key={recipe.id}>
@@ -294,7 +322,7 @@ export default function MisRecetasScreen() {
                             color={selected ? "#7ec8a3" : "#c9b9a6"}
                           />
                         </Pressable>
-                        {index < allSavedRecipes.length - 1 ? (
+                        {index < myRecipes.length - 1 ? (
                           <View className="mx-4 h-[1px] bg-[#efe6db]" />
                         ) : null}
                       </View>
@@ -320,15 +348,16 @@ export default function MisRecetasScreen() {
                 </Text>
               </Pressable>
               <Pressable
-                onPress={handleCreateGroup}
+                onPress={() => void handleCreateGroup()}
+                disabled={groupSaving}
                 className="flex-1 items-center rounded-2xl bg-[#7ec8a3] py-2"
               >
-                <Text className="text-sm font-bold text-white">Crear</Text>
+                <Text className="text-sm font-bold text-white">
+                  {groupSaving ? "Creando..." : "Crear"}
+                </Text>
               </Pressable>
             </View>
-          </View>
-        </View>
-      </Modal>
+      </KeyboardAwareModal>
     </View>
   );
 }

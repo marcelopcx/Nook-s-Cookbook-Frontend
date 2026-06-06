@@ -1,5 +1,10 @@
 import { Audio } from "expo-av";
 
+import {
+  LOGRO_CALABAZA,
+  LOGRO_NINA_TRISTE,
+} from "@/constants/achievements";
+
 let musicEnabled = true;
 let sfxEnabled = true;
 
@@ -150,4 +155,40 @@ export async function unloadPageTurnSfx() {
     await pageTurnSfx.unloadAsync();
     pageTurnSfx = null;
   }
+}
+
+const ACHIEVEMENT_UNLOCK_SOURCES = {
+  default: require("../../assets/sfx/normal.mp3"),
+  [LOGRO_CALABAZA]: require("../../assets/sfx/win.mp3"),
+  [LOGRO_NINA_TRISTE]: require("../../assets/sfx/gay.mp3"),
+} as const;
+
+function achievementUnlockSource(achievementName: string) {
+  if (achievementName === LOGRO_CALABAZA) {
+    return ACHIEVEMENT_UNLOCK_SOURCES[LOGRO_CALABAZA];
+  }
+
+  if (achievementName === LOGRO_NINA_TRISTE) {
+    return ACHIEVEMENT_UNLOCK_SOURCES[LOGRO_NINA_TRISTE];
+  }
+
+  return ACHIEVEMENT_UNLOCK_SOURCES.default;
+}
+
+export async function playAchievementUnlockSfx(achievementName: string) {
+  await ensureAudioMode();
+
+  const { sound } = await Audio.Sound.createAsync(
+    achievementUnlockSource(achievementName),
+    {
+      shouldPlay: true,
+      volume: 0.85,
+    },
+  );
+
+  sound.setOnPlaybackStatusUpdate((status) => {
+    if (status.isLoaded && status.didJustFinish) {
+      void sound.unloadAsync();
+    }
+  });
 }

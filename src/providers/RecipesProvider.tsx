@@ -1,180 +1,452 @@
-import recipeDetailsData from "@/data/recipe-details.json";
-import recipesData from "@/data/recipes.json";
-import React, { createContext, useContext, useMemo, useState } from "react";
+import * as groupsService from "@/services/groups";
+import * as recipesService from "@/services/recipes";
+import { useAchievements } from "@/providers/AchievementsProvider";
+import type { CreateRecetaRequest, UpdateRecetaRequest } from "@/types/api";
+import {
+  mapDetalleToDetails,
+  mapDetalleToRecipe,
+  mapRecetaToRecipe,
+  type Recipe,
+  type RecipeDetails,
+  type RecipeGroup,
+} from "@/utils/recipeMappers";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 
-export type Recipe = {
-  id: string;
-  title: string;
-  category: string;
-  rating: number;
-  timeMinutes: number;
-  difficulty: string;
-  imageUrl: string;
-  isFeatured: boolean;
-  isSaved: boolean;
-  isFavorite: boolean;
-  iconName?: string;
-};
-
-export type IngredientStructure = {
-  nombre: string;
-  cantidad: string;
-};
-
-export type RecipeDetails = {
-  id: string;
-  servings: number;
-  ingredients: IngredientStructure[];
-  steps: string[];
-  tips: string[];
-};
-
-export type RecipeGroup = {
-  id: string;
-  name: string;
-  recipeIds: string[];
-};
+export type { Recipe, RecipeDetails, RecipeGroup, IngredientStructure } from "@/utils/recipeMappers";
 
 type RecipesContextValue = {
   recipes: Recipe[];
   recipeDetails: RecipeDetails[];
   groups: RecipeGroup[];
+  favoriteIds: Set<string>;
+  myRecipeIds: Set<string>;
+  isLoading: boolean;
+  error: string | null;
+  refreshAll: () => Promise<void>;
+  refreshRecipes: () => Promise<void>;
+  refreshGroups: () => Promise<void>;
   getRecipeById: (id: string) => Recipe | undefined;
   getDetailsById: (id: string) => RecipeDetails | undefined;
   getGroupById: (id: string) => RecipeGroup | undefined;
-  updateRecipe: (id: string, patch: Partial<Recipe>) => void;
-  updateDetails: (id: string, patch: Partial<RecipeDetails>) => void;
-  deleteRecipe: (id: string) => void;
-  createGroup: (name: string, recipeIds: string[]) => void;
+  fetchRecipeDetail: (id: string) => Promise<{
+    recipe: Recipe;
+    details: RecipeDetails;
+  } | null>;
+  toggleFavorite: (id: string) => Promise<void>;
+  createRecipe: (payload: CreateRecetaRequest) => Promise<string>;
+  updateRecipeApi: (id: string, payload: UpdateRecetaRequest) => Promise<void>;
+  deleteRecipe: (id: string) => Promise<void>;
+  createGroup: (
+    name: string,
+    recipeIds: string[],
+    description?: string,
+  ) => Promise<void>;
   updateGroup: (
     id: string,
-    patch: Partial<Pick<RecipeGroup, "name" | "recipeIds">>,
-  ) => void;
-  deleteGroup: (id: string) => void;
+    patch: Partial<
+      Pick<RecipeGroup, "name" | "description" | "publico" | "recipeIds">
+    >,
+  ) => Promise<void>;
+  deleteGroup: (id: string) => Promise<void>;
+  followGroup: (id: string) => Promise<void>;
+  unfollowGroup: (id: string) => Promise<void>;
+  fetchGroupDetail: (id: string) => Promise<RecipeGroup | null>;
+  fetchGroupRecipes: (groupId: string) => Promise<Recipe[]>;
 };
 
 const RecipesContext = createContext<RecipesContextValue | null>(null);
 
 export function RecipesProvider({ children }: { children: React.ReactNode }) {
-  const [recipes, setRecipes] = useState(recipesData as Recipe[]);
-  const [recipeDetails, setRecipeDetails] = useState(
-    recipeDetailsData as unknown as RecipeDetails[],
-  );
+  const { checkForNewAchievements } = useAchievements();
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [recipeDetails, setRecipeDetails] = useState<RecipeDetails[]>([]);
   const [groups, setGroups] = useState<RecipeGroup[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [myRecipeIds, setMyRecipeIds] = useState<Set<string>>(new Set());
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const value = useMemo<RecipesContextValue>(() => {
-    const getRecipeById = (id: string) => recipes.find((r) => r.id === id);
-    const getDetailsById = (id: string) =>
-      recipeDetails.find((d) => d.id === id);
-    const getGroupById = (id: string) => groups.find((g) => g.id === id);
+  const refreshRecipes = useCallback(async () => {
+    const [allRecipes, favorites, myRecipes] = await Promise.all([
+      recipesService.listRecipes(),
+      recipesService.listMyFavorites().catch(() => []),
+      recipesService.listMyRecipes().catch(() => []),
+    ]);
 
-    const normalizeRecipeIds = (ids: string[]) => {
-      const existing = new Set(recipes.map((r) => r.id));
-      const unique: string[] = [];
-      const seen = new Set<string>();
-      for (const id of ids) {
-        if (!existing.has(id)) continue;
-        if (seen.has(id)) continue;
-        seen.add(id);
-        unique.push(id);
+    const favSet = new Set(favorites.map((r) => String(r.id)));
+    const mineSet = new Set(myRecipes.map((r) => String(r.id)));
+
+    setFavoriteIds(favSet);
+    setMyRecipeIds(mineSet);
+
+    const mapped = allRecipes.map((receta) =>
+      mapRecetaToRecipe(receta, {
+        isFavorite: favSet.has(String(receta.id)),
+        isSaved: mineSet.has(String(receta.id)),
+        isFeatured: mineSet.has(String(receta.id)),
+      }),
+    );
+
+    setRecipes(mapped);
+  }, []);
+
+  const refreshGroups = useCallback(async () => {
+    const apiGroups = await groupsService.listGroups();
+    const mapped: RecipeGroup[] = apiGroups.map((grupo) => ({
+      id: String(grupo.id),
+      name: grupo.nombre,
+      description: grupo.descripcion,
+      publico: grupo.publico,
+      creatorUsername: grupo.creador_username,
+      numSeguidores: grupo.num_seguidores,
+      numRecetas: grupo.num_recetas,
+      sigue: false,
+      creatorId: grupo.id_usuario_creador,
+      recipeIds: [],
+    }));
+    setGroups(mapped);
+  }, []);
+
+  const refreshAll = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await Promise.all([refreshRecipes(), refreshGroups()]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al cargar datos");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [refreshGroups, refreshRecipes]);
+
+  React.useEffect(() => {
+    void refreshAll();
+  }, [refreshAll]);
+
+  const getRecipeById = useCallback(
+    (id: string) => recipes.find((r) => r.id === id),
+    [recipes],
+  );
+
+  const getDetailsById = useCallback(
+    (id: string) => recipeDetails.find((d) => d.id === id),
+    [recipeDetails],
+  );
+
+  const getGroupById = useCallback(
+    (id: string) => groups.find((g) => g.id === id),
+    [groups],
+  );
+
+  const fetchRecipeDetail = useCallback(
+    async (id: string) => {
+      try {
+        const detalle = await recipesService.getRecipe(Number(id));
+        const recipe = mapDetalleToRecipe(detalle, {
+          isFavorite: favoriteIds.has(id),
+          isSaved: myRecipeIds.has(id),
+          isFeatured: myRecipeIds.has(id),
+        });
+        const details = mapDetalleToDetails(detalle);
+
+        setRecipes((prev) => {
+          const exists = prev.some((r) => r.id === id);
+          if (exists) {
+            return prev.map((r) => (r.id === id ? recipe : r));
+          }
+          return [...prev, recipe];
+        });
+
+        setRecipeDetails((prev) => {
+          const exists = prev.some((d) => d.id === id);
+          if (exists) {
+            return prev.map((d) => (d.id === id ? details : d));
+          }
+          return [...prev, details];
+        });
+
+        return { recipe, details };
+      } catch {
+        return null;
       }
-      return unique;
-    };
+    },
+    [favoriteIds, myRecipeIds],
+  );
 
-    const updateRecipe = (id: string, patch: Partial<Recipe>) => {
+  const toggleFavorite = useCallback(
+    async (id: string) => {
+      const isFavorite = favoriteIds.has(id);
+      if (isFavorite) {
+        await recipesService.removeFavorite(Number(id));
+        setFavoriteIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      } else {
+        await recipesService.addFavorite(Number(id));
+        setFavoriteIds((prev) => new Set(prev).add(id));
+        await checkForNewAchievements();
+      }
+
       setRecipes((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+        prev.map((r) =>
+          r.id === id ? { ...r, isFavorite: !isFavorite } : r,
+        ),
       );
-    };
+    },
+    [favoriteIds, checkForNewAchievements],
+  );
 
-    const updateDetails = (id: string, patch: Partial<RecipeDetails>) => {
-      setRecipeDetails((prev) =>
-        prev.map((d) => (d.id === id ? { ...d, ...patch } : d)),
-      );
-    };
+  const createRecipe = useCallback(
+    async (payload: CreateRecetaRequest) => {
+      const created = await recipesService.createRecipe(payload);
+      await refreshRecipes();
+      await checkForNewAchievements();
+      return String(created.id);
+    },
+    [refreshRecipes, checkForNewAchievements],
+  );
 
-    const deleteRecipe = (id: string) => {
+  const updateRecipeApi = useCallback(
+    async (id: string, payload: UpdateRecetaRequest) => {
+      await recipesService.updateRecipe(Number(id), payload);
+      await fetchRecipeDetail(id);
+      await refreshRecipes();
+    },
+    [fetchRecipeDetail, refreshRecipes],
+  );
+
+  const deleteRecipe = useCallback(
+    async (id: string) => {
+      await recipesService.deleteRecipe(Number(id));
       setRecipes((prev) => prev.filter((r) => r.id !== id));
       setRecipeDetails((prev) => prev.filter((d) => d.id !== id));
-
-      setGroups((prev) =>
-        prev.map((g) => ({
-          ...g,
-          recipeIds: g.recipeIds.filter((rid) => rid !== id),
-        })),
-      );
-    };
-
-    const createGroup = (name: string, recipeIds: string[]) => {
-      const trimmedName = name.trim();
-      if (!trimmedName) return;
-
-      const normalized = normalizeRecipeIds(recipeIds);
-      const newId = Date.now().toString();
-
-      setGroups((prev) => {
-        return [
-          ...prev,
-          { id: newId, name: trimmedName, recipeIds: normalized },
-        ];
+      setMyRecipeIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
       });
-    };
+    },
+    [],
+  );
 
-    const updateGroup = (
+  const createGroup = useCallback(
+    async (name: string, recipeIds: string[], description?: string) => {
+      const created = await groupsService.createGroup({
+        nombre: name.trim(),
+        descripcion: description ?? null,
+        publico: true,
+      });
+
+      await Promise.all(
+        recipeIds.map((recipeId) =>
+          groupsService.addRecipeToGroup(created.id, Number(recipeId)),
+        ),
+      );
+
+      await refreshGroups();
+      await checkForNewAchievements();
+    },
+    [refreshGroups, checkForNewAchievements],
+  );
+
+  const updateGroup = useCallback(
+    async (
       id: string,
-      patch: Partial<Pick<RecipeGroup, "name" | "recipeIds">>,
+      patch: Partial<
+        Pick<RecipeGroup, "name" | "description" | "publico" | "recipeIds">
+      >,
     ) => {
-      setGroups((prev) => {
-        const target = prev.find((g) => g.id === id);
-        if (!target) return prev;
+      const current = groups.find((g) => g.id === id);
+      if (!current) return;
 
-        const nextName = (patch.name ?? target.name).trim();
-        const nextRecipeIds = patch.recipeIds
-          ? normalizeRecipeIds(patch.recipeIds)
-          : target.recipeIds;
-
-        return prev.map((g) =>
-          g.id === id
-            ? { ...g, name: nextName || g.name, recipeIds: nextRecipeIds }
-            : g,
-        );
+      await groupsService.updateGroup(Number(id), {
+        nombre: patch.name?.trim() ?? undefined,
+        descripcion: patch.description,
+        publico: patch.publico,
       });
+
+      if (patch.recipeIds) {
+        const currentIds = new Set(current.recipeIds);
+        const nextIds = new Set(patch.recipeIds);
+
+        const toAdd = patch.recipeIds.filter((rid) => !currentIds.has(rid));
+        const toRemove = current.recipeIds.filter((rid) => !nextIds.has(rid));
+
+        await Promise.all([
+          ...toAdd.map((recipeId) =>
+            groupsService.addRecipeToGroup(Number(id), Number(recipeId)),
+          ),
+          ...toRemove.map((recipeId) =>
+            groupsService.removeRecipeFromGroup(Number(id), Number(recipeId)),
+          ),
+        ]);
+      }
+
+      await refreshGroups();
+    },
+    [groups, refreshGroups],
+  );
+
+  const deleteGroup = useCallback(
+    async (id: string) => {
+      await groupsService.deleteGroup(Number(id));
+      setGroups((prev) => prev.filter((g) => g.id !== id));
+    },
+    [],
+  );
+
+  const followGroup = useCallback(async (id: string) => {
+    await groupsService.followGroup(Number(id));
+    setGroups((prev) =>
+      prev.map((g) =>
+        g.id === id
+          ? {
+              ...g,
+              sigue: true,
+              numSeguidores: g.numSeguidores + 1,
+            }
+          : g,
+      ),
+    );
+  }, []);
+
+  const unfollowGroup = useCallback(async (id: string) => {
+    await groupsService.unfollowGroup(Number(id));
+    setGroups((prev) =>
+      prev.map((g) =>
+        g.id === id
+          ? {
+              ...g,
+              sigue: false,
+              numSeguidores: Math.max(0, g.numSeguidores - 1),
+            }
+          : g,
+      ),
+    );
+  }, []);
+
+  const fetchGroupDetail = useCallback(async (id: string) => {
+    const detalle = await groupsService.getGroup(Number(id));
+    const group: RecipeGroup = {
+      id: String(detalle.id),
+      name: detalle.nombre,
+      description: detalle.descripcion,
+      publico: detalle.publico,
+      creatorUsername: detalle.creador_username,
+      numSeguidores: detalle.num_seguidores,
+      numRecetas: detalle.num_recetas,
+      sigue: detalle.sigue,
+      creatorId: detalle.id_usuario_creador,
+      recipeIds: [],
     };
 
-    const deleteGroup = (id: string) => {
-      const group = getGroupById(id);
-      if (!group) return;
+    setGroups((prev) => {
+      const exists = prev.some((g) => g.id === id);
+      if (exists) {
+        return prev.map((g) => (g.id === id ? group : g));
+      }
+      return [...prev, group];
+    });
 
-      const recipeIdSet = new Set(group.recipeIds);
+    return group;
+  }, []);
 
-      setRecipes((prev) => prev.filter((r) => !recipeIdSet.has(r.id)));
-      setRecipeDetails((prev) => prev.filter((d) => !recipeIdSet.has(d.id)));
+  const fetchGroupRecipes = useCallback(
+    async (groupId: string) => {
+      const recetas = await groupsService.listGroupRecipes(Number(groupId));
+      const mapped = recetas.map((receta) =>
+        mapRecetaToRecipe(receta, {
+          isFavorite: favoriteIds.has(String(receta.id)),
+          isSaved: myRecipeIds.has(String(receta.id)),
+          isFeatured: myRecipeIds.has(String(receta.id)),
+        }),
+      );
 
       setGroups((prev) =>
-        prev
-          .filter((g) => g.id !== id)
-          .map((g) => ({
-            ...g,
-            recipeIds: g.recipeIds.filter((rid) => !recipeIdSet.has(rid)),
-          })),
+        prev.map((g) =>
+          g.id === groupId
+            ? { ...g, recipeIds: mapped.map((r) => r.id) }
+            : g,
+        ),
       );
-    };
 
-    return {
+      setRecipes((prev) => {
+        const byId = new Map(prev.map((r) => [r.id, r]));
+        for (const recipe of mapped) {
+          byId.set(recipe.id, recipe);
+        }
+        return Array.from(byId.values());
+      });
+
+      return mapped;
+    },
+    [favoriteIds, myRecipeIds],
+  );
+
+  const value = useMemo<RecipesContextValue>(
+    () => ({
       recipes,
       recipeDetails,
       groups,
+      favoriteIds,
+      myRecipeIds,
+      isLoading,
+      error,
+      refreshAll,
+      refreshRecipes,
+      refreshGroups,
       getRecipeById,
       getDetailsById,
       getGroupById,
-      updateRecipe,
-      updateDetails,
+      fetchRecipeDetail,
+      toggleFavorite,
+      createRecipe,
+      updateRecipeApi,
       deleteRecipe,
       createGroup,
       updateGroup,
       deleteGroup,
-    };
-  }, [groups, recipeDetails, recipes]);
+      followGroup,
+      unfollowGroup,
+      fetchGroupDetail,
+      fetchGroupRecipes,
+    }),
+    [
+      recipes,
+      recipeDetails,
+      groups,
+      favoriteIds,
+      myRecipeIds,
+      isLoading,
+      error,
+      refreshAll,
+      refreshRecipes,
+      refreshGroups,
+      getRecipeById,
+      getDetailsById,
+      getGroupById,
+      fetchRecipeDetail,
+      toggleFavorite,
+      createRecipe,
+      updateRecipeApi,
+      deleteRecipe,
+      createGroup,
+      updateGroup,
+      deleteGroup,
+      followGroup,
+      unfollowGroup,
+      fetchGroupDetail,
+      fetchGroupRecipes,
+    ],
+  );
 
   return (
     <RecipesContext.Provider value={value}>{children}</RecipesContext.Provider>

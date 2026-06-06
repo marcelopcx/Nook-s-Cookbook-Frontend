@@ -1,5 +1,6 @@
+import type { PerfilResponse, Usuario } from "@/types/api";
 import * as SecureStore from "expo-secure-store";
-import { apiUrl } from "./api";
+import { apiFetch } from "./http";
 
 type LoginRequest = {
   email: string;
@@ -10,13 +11,6 @@ type RegisterRequest = {
   fullName: string;
   email: string;
   password: string;
-};
-
-type Usuario = {
-  id: number;
-  username: string;
-  public: boolean;
-  id_persona: number;
 };
 
 type LoginResponse = {
@@ -38,31 +32,15 @@ function splitFullName(fullName: string): {
   return { nombre, apellido };
 }
 
-async function parseErrorMessage(response: Response): Promise<string> {
-  try {
-    const data = (await response.json()) as { error?: string };
-    if (data?.error) return data.error;
-  } catch {}
-  return "Error de servidor";
-}
-
 export async function login(request: LoginRequest): Promise<LoginResponse> {
-  const response = await fetch(apiUrl("/auth/login"), {
+  const data = await apiFetch<LoginResponse>("/auth/login", {
+    auth: false,
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify({
       username: request.email,
       password: request.password,
     }),
   });
-
-  if (!response.ok) {
-    throw new Error(await parseErrorMessage(response));
-  }
-
-  const data = (await response.json()) as LoginResponse;
 
   if (data.token) {
     await SecureStore.setItemAsync("user_token", data.token);
@@ -76,11 +54,9 @@ export async function register(
 ): Promise<RegisterResponse> {
   const { nombre, apellido } = splitFullName(request.fullName);
 
-  const response = await fetch(apiUrl("/auth/register"), {
+  return apiFetch<RegisterResponse>("/auth/register", {
+    auth: false,
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify({
       username: request.email,
       password: request.password,
@@ -90,12 +66,10 @@ export async function register(
       telefono: null,
     }),
   });
+}
 
-  if (!response.ok) {
-    throw new Error(await parseErrorMessage(response));
-  }
-
-  return (await response.json()) as RegisterResponse;
+export async function getMe(): Promise<PerfilResponse> {
+  return apiFetch<PerfilResponse>("/auth/me");
 }
 
 export async function getToken(): Promise<string | null> {
