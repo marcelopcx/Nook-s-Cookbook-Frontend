@@ -3,6 +3,7 @@ import { AuthProvider } from "@/providers/AuthProvider";
 import { AchievementsProvider } from "@/providers/AchievementsProvider";
 import { AudioSettingsProvider } from "@/providers/AudioSettingsProvider";
 import { RecipesProvider } from "@/providers/RecipesProvider";
+import { SplashGate } from "@/components/layout/SplashGate";
 import { playPageTurnSfx, unloadPageTurnSfx } from "@/services/soundtrack";
 import { useEffect, useRef } from "react";
 import { View } from "react-native";
@@ -54,11 +55,13 @@ export default function RootLayout() {
         <AchievementsProvider>
           <AudioSettingsProvider>
             <RecipesProvider>
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                }}
-              />
+              <SplashGate>
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                  }}
+                />
+              </SplashGate>
             </RecipesProvider>
           </AudioSettingsProvider>
         </AchievementsProvider>

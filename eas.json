@@ -1,0 +1,27 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://nook-s-cookbook-backend.onrender.com",
+        "EXPO_PUBLIC_API_URL_V2": "https://nook-s-cookbook-backend.onrender.com"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://nook-s-cookbook-backend.onrender.com",
+        "EXPO_PUBLIC_API_URL_V2": "https://nook-s-cookbook-backend.onrender.com"
+      }
+    }
+  }
+}
